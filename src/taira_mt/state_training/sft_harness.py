@@ -347,35 +347,35 @@ def collect_sft_preflight() -> SFTPreflightReport:
     fallback_ready = required_installed and qwen3_support
     blocking: list[str] = []
     if not qwen35_support:
-        blocking.append("当前 transformers 未注册 qwen3_5，不能直接加载 Qwen3.5-4B。")
+        blocking.append("The installed transformers version has not registered qwen3_5 and cannot directly load Qwen3.5-4B.")
     if not pins_match:
         mismatch = ", ".join(
-            f"{package}={versions.get(package) or 'missing'}（需 {expected}）"
+            f"{package}={versions.get(package) or 'missing'} (requires {expected})"
             for package, expected in PRIMARY_RUNTIME_PINS.items()
             if versions.get(package) != expected
         )
-        blocking.append(f"论文训练 runtime 未命中已审计精确版本：{mismatch}。")
+        blocking.append(f"The paper training runtime does not match the audited exact versions: {mismatch}.")
     if not trainer_compatible:
-        blocking.append("当前 Transformers Trainer/TrainingArguments 接口与 harness 不兼容。")
+        blocking.append("The installed Transformers Trainer/TrainingArguments interface is incompatible with this harness.")
     if not torch_runtime_ok:
-        blocking.append(f"当前 PyTorch={versions.get('torch') or 'missing'}；5090 训练环境要求保留 2.7+ CUDA 栈。")
+        blocking.append(f"Installed PyTorch={versions.get('torch') or 'missing'}; the 5090 training environment requires a 2.7+ CUDA stack.")
     if not required_installed:
-        blocking.append("缺少 torch/transformers/peft/accelerate 中至少一个必需包。")
+        blocking.append("At least one required package is missing: torch/transformers/peft/accelerate.")
     if not gpu.single_gpu_smoke_available:
-        blocking.append("没有可见的 >=16GB GPU，不能通过 Qwen3.5 单卡 smoke gate。")
+        blocking.append("No GPU with >=16GB is visible; the Qwen3.5 single-GPU smoke gate cannot pass.")
     warnings: list[str] = []
     if not gpu.four_gpu_plan_available:
-        warnings.append("当前可见 GPU 不满足默认 4 卡计划；仍可使用单卡 smoke 配置。")
+        warnings.append("Visible GPUs do not satisfy the default 4-GPU plan; the single-GPU smoke configuration remains available.")
     current_environment = os.environ.get("CONDA_DEFAULT_ENV")
     if current_environment not in {"cot_com", PRIMARY_CONDA_ENVIRONMENT}:
         warnings.append(
-            f"当前进程不在 cot_com 或隔离训练环境 {PRIMARY_CONDA_ENVIRONMENT}；请显式选择环境。"
+            f"The current process is not in cot_com or the isolated training environment {PRIMARY_CONDA_ENVIRONMENT}; select the environment explicitly."
         )
-    warnings.append("Qwen3.5 是 hybrid Gated-DeltaNet；本 harness 禁用 sequence packing，并使用动态 padding。")
+    warnings.append("Qwen3.5 uses hybrid Gated-DeltaNet; this harness disables sequence packing and uses dynamic padding.")
     if not _module_available("causal_conv1d") or not _module_available("fla"):
         warnings.append(
-            "causal_conv1d/FLA 未齐备，Qwen3.5 Gated-DeltaNet 会走较慢的 PyTorch fallback；"
-            "先 smoke 再决定是否装 kernel。"
+            "causal_conv1d/FLA is incomplete; Qwen3.5 Gated-DeltaNet will use the slower PyTorch fallback. "
+            "Run the smoke check before deciding whether to install kernels."
         )
     return SFTPreflightReport(
         conda_environment=os.environ.get("CONDA_DEFAULT_ENV"),
@@ -551,8 +551,8 @@ class DSUSTokenizedDataset:
                 tokenize_sft_record(record, tokenizer, max_seq_length=max_seq_length)
             )
             if index % 1000 == 0:
-                progress(f"分词进度：已完成 {index}/{len(records)} 条。")
-        progress(f"分词完成：{len(self.examples)} 条，未发生静默截断。")
+                progress(f"Tokenization progress: {index}/{len(records)} records complete.")
+        progress(f"Tokenization complete: {len(self.examples)} records, with no silent truncation.")
 
     def __len__(self) -> int:
         return len(self.examples)
@@ -630,15 +630,15 @@ def build_token_length_report(
     limit: int | None = None,
     progress: ProgressCallback = print,
 ) -> TokenLengthReport:
-    progress("步骤 1/3：严格读取 SFT tokenizer export，并检查 public input 泄漏。")
+    progress("Step 1/3: strictly reading the SFT tokenizer export and checking public input leakage.")
     records = load_sft_records(dataset_path, limit=limit)
-    progress(f"步骤 1/3 完成：读取 {len(records)} 条；trainer_private 行数为 0。")
+    progress(f"Step 1/3 complete: read {len(records)} records; trainer_private rows=0.")
     prompts: list[int] = []
     assistants: list[int] = []
     totals: list[int] = []
     over_limit: list[str] = []
     prefix_mismatches = 0
-    progress("步骤 2/3：仅按 user=model_input / assistant=assistant_target 构造 chat tokens。")
+    progress("Step 2/3: constructing chat tokens using only user=model_input / assistant=assistant_target.")
     for index, record in enumerate(records, start=1):
         generation_prompt_ids = _apply_chat_template(
             tokenizer,
@@ -655,8 +655,8 @@ def build_token_length_report(
         if len(full_ids) > max_seq_length:
             over_limit.append(record.sample_id)
         if index % 1000 == 0:
-            progress(f"token dry-run：已处理 {index}/{len(records)} 条。")
-    progress("步骤 2/3 完成：长度统计与 prefix-stability 检查完成。")
+            progress(f"Token dry-run: processed {index}/{len(records)} records.")
+    progress("Step 2/3 complete: length statistics and prefix-stability checks complete.")
     report = TokenLengthReport(
         dataset_path=str(dataset_path.resolve()),
         dataset_sha256=hashlib.sha256(dataset_path.read_bytes()).hexdigest(),
@@ -672,9 +672,9 @@ def build_token_length_report(
         public_input_leakage_count=0,
     )
     progress(
-        "步骤 3/3 完成："
+        "Step 3/3 complete: "
         f"total p99={report.total_tokens.p99}, max={report.total_tokens.maximum}, "
-        f"over_limit={report.over_limit_count}, prefix_mismatch={prefix_mismatches}。"
+        f"over_limit={report.over_limit_count}, prefix_mismatch={prefix_mismatches}."
     )
     return report
 
@@ -718,7 +718,7 @@ def _load_causal_lm(config: DSUSLoRASFTConfig) -> Any:
     supported, family = _model_family_supported(config.base_model_name_or_path)
     if not supported:
         raise RuntimeError(
-            f"当前 Transformers 不支持 {family}；先运行 preflight，并在隔离环境执行其最小升级命令。"
+            f"The installed Transformers version does not support {family}; run preflight first and execute its minimal upgrade command in an isolated environment."
         )
     kwargs: dict[str, Any] = {
         "revision": config.base_model_revision,
@@ -884,14 +884,14 @@ def run_lora_sft(
     if disable_deepspeed:
         deepspeed_path = None
 
-    progress("步骤 1/6：读取 leakage-safe SFT 数据；任何 trainer_private 字段都会直接失败。")
+    progress("Step 1/6: reading leakage-safe SFT data; any trainer_private field causes an immediate failure.")
     train_records = load_sft_records(train_path, limit=config.train_limit)
     dev_records = (
         load_sft_records(dev_path, limit=config.dev_limit) if dev_path is not None else []
     )
-    progress(f"步骤 1/6 完成：train={len(train_records)}，dev={len(dev_records)}。")
+    progress(f"Step 1/6 complete: train={len(train_records)}, dev={len(dev_records)}.")
 
-    progress("步骤 2/6：加载 tokenizer，并执行 assistant-only tokenization。")
+    progress("Step 2/6: loading the tokenizer and performing assistant-only tokenization.")
     tokenizer_name = config.tokenizer_name_or_path or config.base_model_name_or_path
     tokenizer = AutoTokenizer.from_pretrained(
         tokenizer_name,
@@ -916,9 +916,9 @@ def run_lora_sft(
         if dev_records
         else None
     )
-    progress("步骤 2/6 完成：prompt/padding labels 均为 -100，未做 sequence packing。")
+    progress("Step 2/6 complete: prompt/padding labels are all -100; sequence packing is disabled.")
 
-    progress("步骤 3/6：以 BF16 加载 text-only causal LM，并准备可训练 LoRA。")
+    progress("Step 3/6: loading the text-only causal LM in BF16 and preparing trainable LoRA adapters.")
     set_seed(config.seed)
     model = _load_causal_lm(config)
     model.config.use_cache = False
@@ -946,11 +946,11 @@ def run_lora_sft(
         adapter_mode = f"continued:{initial_adapter_path}"
     trainable, total = model.get_nb_trainable_parameters()
     progress(
-        f"步骤 3/6 完成：mode={adapter_mode}；trainable={trainable:,}/{total:,} "
-        f"({100 * trainable / total:.3f}%)。"
+        f"Step 3/6 complete: mode={adapter_mode}; trainable={trainable:,}/{total:,} "
+        f"({100 * trainable / total:.3f}%)."
     )
 
-    progress("步骤 4/6：构造 Trainer；默认 4 卡 ZeRO-2，可由 smoke 显式降级单卡。")
+    progress("Step 4/6: constructing the Trainer; default is 4-GPU ZeRO-2, with an explicit single-GPU smoke option.")
     eval_strategy = "steps" if dev_dataset is not None else "no"
     arguments = TrainingArguments(
         output_dir=str(output_dir),
@@ -993,16 +993,16 @@ def run_lora_sft(
         data_collator=AssistantOnlyDataCollator(pad_token_id=_tokenizer_pad_id(tokenizer)),
         processing_class=tokenizer,
     )
-    progress("步骤 4/6 完成：Trainer 就绪。")
+    progress("Step 4/6 complete: Trainer ready.")
 
-    progress("步骤 5/6：开始 LoRA SFT；每个 checkpoint 仅保存 adapter 与训练状态。")
+    progress("Step 5/6: starting LoRA SFT; each checkpoint saves only the adapter and training state.")
     train_result = trainer.train(resume_from_checkpoint=resume_from_checkpoint)
     metrics: dict[str, Any] = dict(train_result.metrics)
     if dev_dataset is not None:
         metrics.update({f"final_{key}": value for key, value in trainer.evaluate().items()})
-    progress(f"步骤 5/6 完成：train_loss={metrics.get('train_loss', 'n/a')}。")
+    progress(f"Step 5/6 complete: train_loss={metrics.get('train_loss', 'n/a')}.")
 
-    progress("步骤 6/6：保存最终 adapter、tokenizer 与可追溯 provenance。")
+    progress("Step 6/6: saving the final adapter, tokenizer, and traceable provenance.")
     if trainer.is_world_process_zero():
         trainer.save_model(str(output_dir))
         tokenizer.save_pretrained(output_dir)
@@ -1017,7 +1017,7 @@ def run_lora_sft(
             metrics=metrics,
             project_root=project_root,
         )
-        progress(f"步骤 6/6 完成：provenance={provenance_path}。")
+        progress(f"Step 6/6 complete: provenance={provenance_path}.")
     if torch.distributed.is_available() and torch.distributed.is_initialized():
         torch.distributed.barrier()
     return output_dir
@@ -1114,7 +1114,7 @@ def greedy_generate_records(
                 )
                 for item, completion in zip(batch, completions, strict=True)
             )
-            progress(f"greedy JSON 生成：已完成 {min(start + len(batch), len(records))}/{len(records)} 条。")
+            progress(f"Greedy JSON generation: {min(start + len(batch), len(records))}/{len(records)} records complete.")
     finally:
         tokenizer.padding_side = prior_padding_side
     return outputs
@@ -1144,7 +1144,7 @@ def load_model_and_adapter_for_generation(
 
     supported, family = _model_family_supported(base_model_name_or_path)
     if not supported:
-        raise RuntimeError(f"当前 Transformers 不支持 {family}；请先执行 preflight 建议的隔离升级。")
+        raise RuntimeError(f"The installed Transformers version does not support {family}; first perform the isolated upgrade recommended by preflight.")
     tokenizer = AutoTokenizer.from_pretrained(adapter_path)
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token

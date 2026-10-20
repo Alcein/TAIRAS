@@ -60,13 +60,13 @@ def main() -> None:
     args = parse_args()
     api_key = os.getenv(args.api_key_env, "").strip()
     if not args.api_base_url or not api_key:
-        raise SystemExit(f"缺少模型配置：请设置 --api-base-url 与环境变量 {args.api_key_env}。")
+        raise SystemExit(f"Missing model configuration: set --api-base-url and environment variable {args.api_key_env}.")
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    print("步骤 1/4：从老 TAIRA 成型 query 中抽取与 30 条开发集不重叠的固定候选池。")
+    print("Step 1/4: extracting a fixed candidate pool from legacy TAIRA queries, disjoint from the 30 development cases.")
     sources = select_source_pool(args.data_root, seed=args.seed, pool_per_domain=args.source_pool_per_domain)
-    print(f"阶段完成：已固定 {len(sources)} 条候选 source query，尚未生成多轮轨迹。")
+    print(f"Stage complete: fixed {len(sources)} candidate source queries; multi-turn trajectories have not been generated.")
     planner = openai_json_caller(args.api_base_url, api_key, args.model, temperature=0.0, max_tokens=2400)
-    print("步骤 2/4：由 LLM 对五种多轮机制分别评分；模型不接触全局比例。")
+    print("Step 2/4: using the LLM to score five multi-turn mechanisms independently; global ratios are hidden from the model.")
     planned = plan_source_pool(
         sources,
         planner,
@@ -75,11 +75,11 @@ def main() -> None:
     )
     allocations = allocate_balanced_mechanisms(planned, cases_per_mechanism=args.cases_per_mechanism)
     _write_plan_artifacts(args.output_dir, sources, allocations, args)
-    print(f"阶段完成：全局 allocator 已分配 {len(allocations)} 条，不同机制配额已固定。")
+    print(f"Stage complete: the global allocator assigned {len(allocations)} records; mechanism quotas are fixed.")
     if args.stage == "plan":
-        print(f"规划完成：冻结前 manifest 位于 {args.output_dir.resolve()}。")
+        print(f"Planning complete: pre-freeze manifest is at {args.output_dir.resolve()}.")
         return
-    print("步骤 3/4：按已固定机制生成紧凑用户状态、一次多轮转移和商品证据。")
+    print("Step 3/4: generating compact user states, one multi-turn transition, and item evidence for each assigned mechanism.")
     case_inputs = attach_catalog_evidence(args.data_root, make_test_case_inputs(allocations))
     author = openai_json_caller(args.api_base_url, api_key, args.model, temperature=0.0, max_tokens=1400)
     records = generate_test_trajectories(case_inputs, author, cache_path=args.output_dir / "generation_cache.jsonl")
@@ -92,8 +92,8 @@ def main() -> None:
         pool_per_domain=args.source_pool_per_domain,
         cases_per_mechanism=args.cases_per_mechanism,
     )
-    print("步骤 4/4：已冻结 Agent runtime episode、来源池、评分缓存与全局分配 manifest。")
-    print(f"全部完成：{len(records)} 条冻结测试 episode 已写入 {args.output_dir.resolve()}。")
+    print("Step 4/4: froze agent runtime episodes, source pools, score caches, and the global allocation manifest.")
+    print(f"Complete: {len(records)} frozen test episodes written to {args.output_dir.resolve()}.")
 
 
 if __name__ == "__main__":

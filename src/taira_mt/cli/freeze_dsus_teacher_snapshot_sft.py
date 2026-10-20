@@ -219,7 +219,7 @@ def main(argv: Sequence[str] | None = None) -> Path:
     if any(path.exists() for path in outputs.values()):
         raise FileExistsError("refusing to overwrite an existing final snapshot freeze")
 
-    print("步骤 1/4：只读加载 full sample 顺序、公开 prompt 与 trajectory lineage。")
+    print("Step 1/4: loading the full sample order, public prompts, and trajectory lineage read-only.")
     all_ids = _read_ids(inputs["all_sample_ids"])
     public = [
         row
@@ -228,12 +228,12 @@ def main(argv: Sequence[str] | None = None) -> Path:
     ]
     lineage = [row for path in lineage_paths for row in _read_lineage(path)]
     print(
-        f"步骤 1/4 完成：requested={len(all_ids)}，public rows={len(public)}，"
-        f"lineage rows={len(lineage)}，public/lineage files="
-        f"{len(public_prompt_paths)}/{len(lineage_paths)}。"
+        f"Step 1/4 complete: requested={len(all_ids)}, public rows={len(public)}, "
+        f"lineage rows={len(lineage)}, public/lineage files="
+        f"{len(public_prompt_paths)}/{len(lineage_paths)}."
     )
 
-    print("步骤 2/4：加载 base/repair snapshot 与各自 acceptance pass；repair selected IDs 优先。")
+    print("Step 2/4: loading base/repair snapshots and their acceptance passes; repair-selected IDs take priority.")
     base = _read_jsonl(inputs["base_consensus_accepted"], TeacherConsensusRecord)
     base_pass = _read_ids(inputs["base_pass_ids"])
     repair_layers: list[RepairSnapshotLayer] | None = None
@@ -262,9 +262,9 @@ def main(argv: Sequence[str] | None = None) -> Path:
                 f"{name}:selected/validated/pass={len(selected)}/{len(records)}/{len(passed)}"
             )
         print(
-            f"步骤 2/4 完成：base records/pass={len(base)}/{len(base_pass)}；"
-            + "；".join(layer_progress)
-            + "。"
+            f"Step 2/4 complete: base records/pass={len(base)}/{len(base_pass)}; "
+            + "; ".join(layer_progress)
+            + "."
         )
     else:
         legacy_repair = _read_jsonl(inputs["repair_validated"], TeacherProjectionValidatedRecord)
@@ -276,12 +276,12 @@ def main(argv: Sequence[str] | None = None) -> Path:
         )
         selected_count = len(legacy_repair) if legacy_selected is None else len(legacy_selected)
         print(
-            f"步骤 2/4 完成：base records/pass={len(base)}/{len(base_pass)}，"
+            f"Step 2/4 complete: base records/pass={len(base)}/{len(base_pass)}, "
             f"repair selected/validated/pass={selected_count}/{len(legacy_repair)}/"
-            f"{len(legacy_pass)}。"
+            f"{len(legacy_pass)}."
         )
 
-    print("步骤 3/4：按原 sample 顺序冻结 snapshot，并按 trajectory 确定性切 train/dev/test。")
+    print("Step 3/4: freezing snapshots in the original sample order and deterministically splitting train/dev/test by trajectory.")
     result = freeze_teacher_snapshot_sft(
         public_records=public,  # type: ignore[arg-type]
         lineage_records=lineage,
@@ -295,11 +295,11 @@ def main(argv: Sequence[str] | None = None) -> Path:
         split_seed=args.split_seed,
     )
     print(
-        f"步骤 3/4 完成：final={result.summary.final_count}，"
-        f"missing={result.summary.missing_count}，fabricated=0，trajectory leakage=0。"
+        f"Step 3/4 complete: final={result.summary.final_count}, "
+        f"missing={result.summary.missing_count}, fabricated=0, trajectory leakage=0."
     )
 
-    print("步骤 4/4：写出 final/SFT/missing/duplicate/provenance/split，并冻结输入输出 hash。")
+    print("Step 4/4: writing final/SFT/missing/duplicate/provenance/split files and freezing input/output hashes.")
     _write_new(outputs["final_snapshots"], _jsonl(result.final_snapshots))
     _write_new(outputs["sft"], _jsonl(result.sft_records))
     _write_new(outputs["missing"], "".join(sample_id + "\n" for sample_id in result.missing_ids))
@@ -332,8 +332,8 @@ def main(argv: Sequence[str] | None = None) -> Path:
         + "\n",
     )
     print(
-        f"步骤 4/4 完成：final={len(result.final_snapshots)}，"
-        f"missing={len(result.missing_ids)}，目录={output_dir}。"
+        f"Step 4/4 complete: final={len(result.final_snapshots)}, "
+        f"missing={len(result.missing_ids)}, directory={output_dir}."
     )
     return output_dir
 

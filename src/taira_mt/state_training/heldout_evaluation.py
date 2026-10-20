@@ -972,7 +972,7 @@ def run_heldout_evaluation(
     run_dir = output_root / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    progress("步骤 1/5：只读加载 held-out public/private/registry，核对 split 与样本身份。")
+    progress("Step 1/5: loading held-out public/private/registry files read-only and checking splits and sample identities.")
     public_by_id = _index(_load_models(dataset_paths["public"], PublicRLPromptRecord), label="public")
     private_by_id = _index(_load_models(dataset_paths["private"], PrivateRLVerifierRecord), label="private")
     registry_by_id = _index(
@@ -990,9 +990,9 @@ def run_heldout_evaluation(
     for sample_id in public_by_id:
         if public_by_id[sample_id].public_prompt_sha256 != private_by_id[sample_id].public_prompt_sha256:
             raise ValueError(f"public/private prompt hash mismatch: {sample_id}")
-    progress(f"步骤 1/5 完成：冻结 split={spec.split.value}，样本={len(public_by_id)}。")
+    progress(f"Step 1/5 complete: frozen split={spec.split.value}, samples={len(public_by_id)}.")
 
-    progress("步骤 2/5：读取已生成 rollouts；运行 verifier 并计算 evidence/constraint 分解指标。")
+    progress("Step 2/5: reading generated rollouts, running the verifier, and computing evidence/constraint metric breakdowns.")
     rows_by_system_seed: dict[tuple[str, str], list[PerExampleEvaluation]] = {}
     rollout_hashes_by_system: dict[str, dict[str, str]] = defaultdict(dict)
     for system in spec.systems:
@@ -1026,11 +1026,11 @@ def run_heldout_evaluation(
             rows_by_system_seed[(system.system_id, seed.seed_id)] = evaluated
             rollout_hashes_by_system[system.system_id][seed.seed_id] = _file_sha256(path)
             progress(
-                f"  {system.system_id}/{seed.seed_id}: {len(evaluated)}/{len(public_by_id)} 条完成。"
+                f"  {system.system_id}/{seed.seed_id}: {len(evaluated)}/{len(public_by_id)} complete."
             )
-    progress("步骤 2/5 完成：逐样本 verifier 与细粒度 P/R/F1 已计算。")
+    progress("Step 2/5 complete: per-sample verifier results and fine-grained P/R/F1 computed.")
 
-    progress("步骤 3/5：合并多个 seed，按 difficulty/mechanism/domain/source/curriculum 分层。")
+    progress("Step 3/5: combining seeds and stratifying by difficulty/mechanism/domain/source/curriculum.")
     systems = [
         _system_summary(
             system,
@@ -1043,16 +1043,16 @@ def run_heldout_evaluation(
         for system in spec.systems
     ]
     strata = _stratified_summaries(spec.systems, rows_by_system_seed)
-    progress(f"步骤 3/5 完成：system={len(systems)}，stratum rows={len(strata)}。")
+    progress(f"Step 3/5 complete: system={len(systems)}, stratum rows={len(strata)}.")
 
-    progress("步骤 4/5：在 shared sample IDs 上执行确定性 paired bootstrap。")
+    progress("Step 4/5: running deterministic paired bootstrap on shared sample IDs.")
     comparisons = _paired_comparisons(spec, rows_by_system_seed)
     progress(
-        f"步骤 4/5 完成：comparison={len(comparisons)}，"
-        f"bootstrap metrics={sum(len(item.metrics) for item in comparisons)}。"
+        f"Step 4/5 complete: comparison={len(comparisons)}, "
+        f"bootstrap metrics={sum(len(item.metrics) for item in comparisons)}."
     )
 
-    progress("步骤 5/5：写入 paper-facing JSON/CSV、逐样本 private ledger 与内容寻址 manifest。")
+    progress("Step 5/5: writing paper-facing JSON/CSV, per-sample private ledgers, and content-addressed manifests.")
     input_hashes_after = {
         "dataset": {name: _file_sha256(path) for name, path in dataset_paths.items()},
         "rollouts": {
@@ -1137,7 +1137,7 @@ def run_heldout_evaluation(
         "outputs": _output_ledger(run_dir),
     }
     _write_idempotently(run_dir / "manifest.json", canonical_json(manifest) + "\n")
-    progress(f"步骤 5/5 完成：paper-facing 评测工件={run_dir}。")
+    progress(f"Step 5/5 complete: paper-facing evaluation artifacts={run_dir}.")
     return HeldoutEvaluationResult(run_id=run_id, run_dir=str(run_dir), report=report)
 
 

@@ -224,7 +224,7 @@ def main(argv: Sequence[str] | None = None) -> Path:
     if any(path.exists() for path in outputs.values()):
         raise FileExistsError("refusing to overwrite an existing snapshot-differ run")
 
-    print("步骤 1/4：读取最终冻结或三教师已接受的完整状态快照；本程序不会调用任何 API。")
+    print("Step 1/4: reading final frozen or three-teacher-accepted full state snapshots; this program makes no API calls.")
     all_records: list[TeacherSnapshotSourceRecord]
     if frozen_input:
         all_records = _read_frozen(input_path)
@@ -244,26 +244,26 @@ def main(argv: Sequence[str] | None = None) -> Path:
         )
     trajectory_count = len({item.trajectory_id for item in records})
     print(
-        f"步骤 1/4 完成：上游 accepted={len(all_records)}，本次选择={len(records)}，"
-        f"轨迹={trajectory_count}。"
+        f"Step 1/4 complete: upstream accepted={len(all_records)}, selected={len(records)}, "
+        f"trajectories={trajectory_count}."
     )
 
-    print("步骤 2/4：按轨迹和 turn 排序，仅对 opening 或严格相邻快照做确定性差分。")
+    print("Step 2/4: sorting by trajectory and turn, and deterministically diffing only opening or strictly adjacent snapshots.")
     transitions, summary = compile_accepted_snapshot_trajectories(records)
     print(
-        f"步骤 2/4 完成：可编译={summary.compiled_count}，"
-        f"不可编译={summary.uncompilable_count}；失败不会猜测补丁。"
+        f"Step 2/4 complete: compilable={summary.compiled_count}, "
+        f"uncompilable={summary.uncompilable_count}; patches are never guessed on failure."
     )
 
-    print("步骤 3/4：核对所有可发布补丁均已由 production reduce_state 回放且决策等价。")
+    print("Step 3/4: checking that all releasable patches have been replayed by production reduce_state and are decision-equivalent.")
     if summary.replay_verified_count != summary.compiled_count:
         raise RuntimeError("replay verification count does not cover every compiled transition")
     print(
-        f"步骤 3/4 完成：回放验证={summary.replay_verified_count}/"
-        f"{summary.compiled_count}。"
+        f"Step 3/4 complete: replay-verified={summary.replay_verified_count}/"
+        f"{summary.compiled_count}."
     )
 
-    print("步骤 4/4：写出 compiled/uncompilable、逐条原因账本和汇总。")
+    print("Step 4/4: writing compiled/uncompilable records, per-record reason ledgers, and summaries.")
     compiled = [item for item in transitions if item.status == "compiled"]
     uncompilable = [item for item in transitions if item.status == "uncompilable"]
     _write_new(outputs["all"], _jsonl(transitions))
@@ -312,8 +312,8 @@ def main(argv: Sequence[str] | None = None) -> Path:
     )
     _write_new(outputs["summary"], canonical_json(summary_payload) + "\n")
     print(
-        f"步骤 4/4 完成：compiled={len(compiled)}，uncompilable={len(uncompilable)}，"
-        f"目录={output_dir}。"
+        f"Step 4/4 complete: compiled={len(compiled)}, uncompilable={len(uncompilable)}, "
+        f"directory={output_dir}."
     )
     return output_dir
 

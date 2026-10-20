@@ -230,12 +230,12 @@ def plan_source_pool(
             response = planner(planning_messages(batch))
             values = normalize_plan_response(response, batch)
         except Exception as error:
-            print(f"阶段告警：规划批次 {start // batch_size + 1} 调用异常 {type(error).__name__}，使用中性评分继续。", flush=True)
+            print(f"Warning: planning batch {start // batch_size + 1} failed with {type(error).__name__}; continuing with neutral scores.", flush=True)
             values = normalize_plan_response({}, batch)
         for value in values:
             _append_jsonl(cache_path, value)
             cached[value["candidate_key"]] = value
-        print(f"阶段进度：已完成多轮机制适配评分 {min(start + len(batch), len(pending))}/{len(pending)}。", flush=True)
+        print(f"Progress: scored multi-turn mechanism fit for {min(start + len(batch), len(pending))}/{len(pending)} cases.", flush=True)
     for source in sources:
         planned.append(cached[source["candidate_key"]])
     return planned
@@ -392,7 +392,7 @@ def generate_test_trajectories(
         _append_jsonl(cache_path, record)
         cached[case_id] = record
         records.append(record)
-        print(f"阶段进度：已生成冻结测试轨迹 {position}/{len(case_inputs)}。", flush=True)
+        print(f"Progress: generated frozen test trajectories {position}/{len(case_inputs)}.", flush=True)
     return records
 
 

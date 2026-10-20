@@ -127,7 +127,7 @@ def build_adjacent_sft(
     if any(path.exists() for path in output_paths.values()):
         raise FileExistsError(f"refusing to overwrite an existing adjacent-SFT run: {output_dir}")
 
-    print("步骤 1/4：读取冻结 full-snapshot SFT 与 differ 已回放通过的 compiled transitions；不会调用 API。")
+    print("Step 1/4: reading frozen full-snapshot SFT and compiled transitions verified by differ replay; no API calls.")
     frozen = _read_jsonl(full_snapshot_sft_path, FullSnapshotSFTRecord)
     compiled = _read_jsonl(compiled_transition_path, TeacherSnapshotTransitionRecord)
     frozen_by_id = _unique_by_sample(frozen, owner="final500 SFT")
@@ -137,9 +137,9 @@ def build_adjacent_sft(
     missing = sorted(set(compiled_by_id).difference(frozen_by_id))
     if missing:
         raise ValueError(f"compiled differ IDs absent from final500 split: {missing[:3]}")
-    print(f"步骤 1/4 完成：frozen snapshots={len(frozen)}，replay-certified={len(compiled)}。")
+    print(f"Step 1/4 complete: frozen snapshots={len(frozen)}, replay-certified={len(compiled)}.")
 
-    print("步骤 2/4：按 sample_id 严格连接，并为非 opening 构造 predecessor state + latest observations。")
+    print("Step 2/4: joining strictly by sample_id and constructing predecessor state + latest observations for non-opening records.")
     tokenizer_rows: dict[str, list[SFTTokenizerRecord]] = {
         "train": [],
         "dev": [],
@@ -238,11 +238,11 @@ def build_adjacent_sft(
             f"total={len(compiled)}, opening={opening_count}, nonopening={nonopening_count}"
         )
     print(
-        f"步骤 2/4 完成：{len(compiled)} 条均重放一致；"
-        f"opening={opening_count}，真正相邻多轮={nonopening_count}，split={actual_counts}。"
+        f"Step 2/4 complete: all {len(compiled)} records are replay-consistent; "
+        f"opening={opening_count}, strictly adjacent multi-turn={nonopening_count}, split={actual_counts}."
     )
 
-    print("步骤 3/4：写出与现有 SFT harness 兼容的 tokenizer 文件和逐条私有 lineage。")
+    print("Step 3/4: writing tokenizer files compatible with the existing SFT harness and per-record private lineage.")
     output_dir.mkdir(parents=True, exist_ok=False)
     for split, rows in tokenizer_rows.items():
         output_paths[split].write_text(
@@ -253,9 +253,9 @@ def build_adjacent_sft(
         "".join(canonical_json(row) + "\n" for row in lineage_rows),
         encoding="utf-8",
     )
-    print("步骤 3/4 完成：train/dev/test tokenizer SFT 与 lineage 已写出。")
+    print("Step 3/4 complete: train/dev/test tokenizer SFT and lineage written.")
 
-    print("步骤 4/4：冻结 summary/manifest，明确它是 replay-certified adjacent 辅助视图。")
+    print("Step 4/4: freezing summary/manifest, explicitly identifying this as a replay-certified adjacent auxiliary view.")
     summary = {
         "schema_version": SCHEMA_VERSION,
         "status": "complete",
@@ -311,7 +311,7 @@ def build_adjacent_sft(
         },
     }
     output_paths["manifest"].write_text(canonical_json(manifest) + "\n", encoding="utf-8")
-    print(f"步骤 4/4 完成：离线辅助视图已冻结到 {output_dir}。")
+    print(f"Step 4/4 complete: offline auxiliary view frozen at {output_dir}.")
     return output_dir
 
 

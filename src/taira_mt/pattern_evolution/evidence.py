@@ -80,7 +80,7 @@ def _write_idempotently(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
         if path.read_text(encoding="utf-8") != text:
-            raise FileExistsError(f"拒绝覆盖内容不同的演化证据文件：{path}")
+            raise FileExistsError(f"Refusing to overwrite evolution evidence with different content: {path}")
         return
     path.write_text(text, encoding="utf-8")
 
@@ -92,7 +92,7 @@ def _read_json_records(path: Path) -> list[dict[str, Any]]:
     if text.startswith("["):
         payload = json.loads(text)
         if not isinstance(payload, list) or not all(isinstance(item, dict) for item in payload):
-            raise ValueError(f"{path} 必须是对象数组或 JSONL")
+            raise ValueError(f"{path} must contain an array of objects or JSONL")
         return payload
     records: list[dict[str, Any]] = []
     for line_number, line in enumerate(text.splitlines(), start=1):
@@ -100,7 +100,7 @@ def _read_json_records(path: Path) -> list[dict[str, Any]]:
             continue
         payload = json.loads(line)
         if not isinstance(payload, dict):
-            raise ValueError(f"{path}:{line_number} 必须是 JSON 对象")
+            raise ValueError(f"{path}:{line_number} must be a JSON object")
         records.append(payload)
     return records
 
@@ -112,11 +112,11 @@ def load_pattern_source(artifact_dir: Path) -> LoadedPatternSource:
     manifest_path = artifact_dir / "manifest.json"
     library_path = artifact_dir / "pattern_library.public.json"
     if not manifest_path.is_file() or not library_path.is_file():
-        raise FileNotFoundError("Pattern artifact 必须同时包含 manifest.json 和 pattern_library.public.json")
+        raise FileNotFoundError("Pattern artifact must contain both manifest.json and pattern_library.public.json")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     library = json.loads(library_path.read_text(encoding="utf-8"))
     if not isinstance(manifest, dict) or not isinstance(library, dict):
-        raise ValueError("Pattern manifest/library 顶层必须是 JSON 对象")
+        raise ValueError("Pattern manifest/library must have a JSON object at the top level")
 
     expected_outputs = {
         item["relative_path"]: item["sha256"]
@@ -126,15 +126,15 @@ def load_pattern_source(artifact_dir: Path) -> LoadedPatternSource:
     actual_file_sha256 = _file_sha256(library_path)
     expected_file_sha256 = expected_outputs.get("pattern_library.public.json")
     if expected_file_sha256 != actual_file_sha256:
-        raise ValueError("Pattern library 文件哈希与 manifest 不一致")
+        raise ValueError("Pattern library file hash does not match the manifest")
     actual_content_sha256 = content_sha256(library)
     if manifest.get("library_sha256") != actual_content_sha256:
-        raise ValueError("Pattern library 内容哈希与 manifest 不一致")
+        raise ValueError("Pattern library content hash does not match the manifest")
 
     parsed = StateConditionedPatternLibrary.model_validate(library)
     pattern_ids = [item.pattern_id for item in parsed.patterns]
     if len(pattern_ids) != len(set(pattern_ids)):
-        raise ValueError("Pattern library 存在重复 pattern_id")
+        raise ValueError("Pattern library contains duplicate pattern_id values")
     return LoadedPatternSource(
         artifact_dir=artifact_dir,
         manifest=manifest,
@@ -149,7 +149,7 @@ def _filter_success_insights(pattern: Mapping[str, Any]) -> dict[str, Any]:
     projected = copy.deepcopy(dict(pattern))
     retained = [insight for insight in projected["insights"] if insight.get("source") == "success_distillation"]
     if not retained:
-        raise ValueError(f"{pattern.get('pattern_id')} 没有 success_distillation insight")
+        raise ValueError(f"{pattern.get('pattern_id')} has no success_distillation insight")
     projected["insights"] = retained
     retained_ids = {item["insight_id"] for item in retained}
     contract = projected.get("execution_contract")
@@ -216,7 +216,7 @@ def build_staged_checkpoints(source: LoadedPatternSource) -> list[dict[str, Any]
         if int(item.get("supporting_expert_episode_count", 0)) > 0
     ]
     if not seed_patterns or not success_patterns:
-        raise ValueError("现有 Pattern 字段不足以构建 seed/+success 诊断投影")
+        raise ValueError("Existing Pattern fields are insufficient for the seed/+success diagnostic projection")
 
     seed_library = _diagnostic_library(source.library, stage="seed", patterns=seed_patterns)
     success_library = _diagnostic_library(
@@ -392,7 +392,7 @@ def generate_corruption_candidates(library: Mapping[str, Any]) -> list[dict[str,
             previous_value = applicability[widened_axis]
             applicability[widened_axis] = None
         if widened_axis is None:
-            raise ValueError(f"{pattern['pattern_id']} 没有可扩宽的 applicability scope")
+            raise ValueError(f"{pattern['pattern_id']} has no applicability scope that can be widened")
         widened["mutation"] = {
             "kind": "remove_applicability_guard",
             "axis": widened_axis,
@@ -485,7 +485,7 @@ def evaluate_candidate_gates(
         parent_id = str(candidate.get("parent_pattern_id", ""))
         candidate_pattern = candidate.get("candidate_pattern")
         if not candidate_id or not isinstance(candidate_pattern, dict):
-            raise ValueError("每个 candidate 必须提供 candidate_id 和 candidate_pattern")
+            raise ValueError("Each candidate must provide candidate_id and candidate_pattern")
         parent = patterns.get(parent_id)
 
         procedure_pass = parent is not None and canonical_json(_procedure_signature(parent)) == canonical_json(
@@ -568,7 +568,7 @@ def evaluate_candidate_gates(
 def _decision_index(decision: Mapping[str, Any], fallback: int) -> int:
     value = decision.get("decision_index", decision.get("turn_index", fallback))
     if isinstance(value, bool) or not isinstance(value, int):
-        raise ValueError("decision_index/turn_index 必须是整数")
+        raise ValueError("decision_index/turn_index must be an integer")
     return value
 
 
@@ -579,7 +579,7 @@ def _first_divergence(record: Mapping[str, Any], decisions: Sequence[Mapping[str
     )
     if explicit is not None:
         if isinstance(explicit, bool) or not isinstance(explicit, int):
-            raise ValueError("first consequential divergence 必须是整数")
+            raise ValueError("first consequential divergence must be an integer")
         return explicit
     for fallback, decision in enumerate(decisions):
         if decision.get(
@@ -618,7 +618,7 @@ def _target_indices(candidate: Mapping[str, Any]) -> list[int]:
         )
         values = [] if single is None else [single]
     if not isinstance(values, list) or any(isinstance(value, bool) or not isinstance(value, int) for value in values):
-        raise ValueError("target_decision_indices 必须是整数数组")
+        raise ValueError("target_decision_indices must be an array of integers")
     return sorted(set(values))
 
 
@@ -652,10 +652,10 @@ def audit_locality(
         trajectory_id = str(record.get("trajectory_id", record.get("pair_id", "")))
         decisions = record.get("decisions", record.get("route"))
         if not trajectory_id or not isinstance(decisions, list) or not decisions:
-            raise ValueError("trajectory record 必须有 trajectory_id 和非空 decisions/route")
+            raise ValueError("trajectory record must have trajectory_id and nonempty decisions/route")
         indexes = [_decision_index(item, offset) for offset, item in enumerate(decisions)]
         if len(indexes) != len(set(indexes)):
-            raise ValueError(f"{trajectory_id} 的 decision index 重复")
+            raise ValueError(f"{trajectory_id} has duplicate decision indices")
         first = _first_divergence(record, decisions)
         trajectories[trajectory_id] = {
             "trajectory_id": trajectory_id,
@@ -669,7 +669,7 @@ def audit_locality(
         candidate_id = str(candidate.get("candidate_id", ""))
         trajectory_id = str(candidate.get("trajectory_id", candidate.get("pair_id", "")))
         if not candidate_id or trajectory_id not in trajectories:
-            raise ValueError(f"candidate {candidate_id or '<missing>'} 无法连接 trajectory")
+            raise ValueError(f"candidate {candidate_id or '<missing>'} cannot be joined to a trajectory")
         trajectory = trajectories[trajectory_id]
         route_indices = trajectory["decision_indices"]
         first = trajectory["first_consequential_divergence_index"]
@@ -791,29 +791,29 @@ def build_pattern_evolution_evidence(
     )
     if progress is not None:
         progress(
-            "步骤 1/4 完成：已验证 "
-            f"{len(source.library['patterns'])} 个论文程序族与 "
-            f"{len(family_runtime_mapping.runtime_to_family)} 个内部运行时条目；"
-            "二者是多对多实现投影，不能相加。整个过程 external_calls=False。"
+            "Step 1/4 complete: validated "
+            f"{len(source.library['patterns'])} paper procedure families and "
+            f"{len(family_runtime_mapping.runtime_to_family)} internal runtime entries; "
+            "these form a many-to-many implementation mapping and must not be added together. external_calls=False throughout."
         )
-        progress("步骤 2/4：正在冻结 seed、+success、+correction、full-gated 四级机器可读谱系。")
+        progress("Step 2/4: freezing four levels of machine-readable lineage: seed, +success, +correction, and full-gated.")
     checkpoints = build_staged_checkpoints(source)
     if progress is not None:
         progress(
-            "步骤 2/4 完成：Pattern 数依次为 "
+            "Step 2/4 complete: Pattern counts in order: "
             + " / ".join(str(item["stats"]["pattern_count"]) for item in checkpoints)
-            + "；full-gated 未获真实 replay 证据，因此诚实标记为与 +correction 相同。"
+            + "; full-gated has no actual replay evidence and is therefore marked as identical to +correction."
         )
-        progress("步骤 3/4：正在注入 scope-widening、action-flip、private-field 与 duplicate 对照。")
+        progress("Step 3/4: injecting scope-widening, action-flip, private-field, and duplicate controls.")
     corruptions = generate_corruption_candidates(source.library)
     gate_decisions = evaluate_candidate_gates(source.library, corruptions)
     if progress is not None:
         progress(
-            "步骤 3/4 完成：共生成 "
-            f"{len(corruptions)} 个确定性候选；"
-            f"门控结果={dict(sorted(Counter(item['decision'] for item in gate_decisions).items()))}。"
+            "Step 3/4 complete: generated "
+            f"{len(corruptions)} deterministic candidates; "
+            f"gate results={dict(sorted(Counter(item['decision'] for item in gate_decisions).items()))}."
         )
-        progress("步骤 4/4：正在汇总 first-divergence 局部更新与 whole-route 更新的结构 locality。")
+        progress("Step 4/4: summarizing structural locality for first-divergence local updates and whole-route updates.")
     trajectories = _read_json_records(trajectory_log) if trajectory_log is not None else None
     candidates = _read_json_records(candidate_log) if candidate_log is not None else None
     locality = audit_locality(trajectories, candidates)
@@ -939,13 +939,13 @@ def build_pattern_evolution_evidence(
     _write_idempotently(output_dir / "manifest.json", _json_text(manifest))
     if progress is not None:
         if locality["status"] == "pending_missing_inputs":
-            progress("步骤 4/4 完成：trajectory/candidate logs 尚未齐备，locality 明确写为 pending，未生成虚假测量。")
+            progress("Step 4/4 complete: trajectory/candidate logs are incomplete; locality is explicitly pending, with no fabricated measurements.")
         else:
             counts = locality["input_counts"]
             progress(
-                "步骤 4/4 完成：已连接 "
-                f"{counts['trajectory_count']} 条 trajectory 与 "
-                f"{counts['candidate_count']} 个 candidate。"
+                "Step 4/4 complete: joined "
+                f"{counts['trajectory_count']} trajectories and "
+                f"{counts['candidate_count']} candidates."
             )
     return {
         "output_dir": output_dir,

@@ -31,16 +31,16 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def main(argv: Sequence[str] | None = None) -> Path:
     args = parse_args(argv)
-    print("步骤 1/3：仅读取 public prompt pool；此阶段不会打开 trainer-private verifier。")
+    print("Step 1/3: reading only the public prompt pool; trainer-private verifier data is not opened at this stage.")
     records = load_public_generation_inputs(args.public_prompts, limit=args.limit)
-    print(f"步骤 1/3 完成：读取 {len(records)} 条 public prompts。")
-    print("步骤 2/3：加载 text-only base model 与 LoRA adapter。")
+    print(f"Step 1/3 complete: read {len(records)} public prompts.")
+    print("Step 2/3: loading the text-only base model and LoRA adapter.")
     model, tokenizer = load_model_and_adapter_for_generation(
         base_model_name_or_path=args.base_model,
         adapter_path=args.adapter,
         base_model_revision=args.base_model_revision,
     )
-    print("步骤 2/3 完成：开始 temperature=0 / do_sample=False 的 JSON 生成。")
+    print("Step 2/3 complete: starting JSON generation with temperature=0 / do_sample=False.")
     outputs = greedy_generate_records(
         model=model,
         tokenizer=tokenizer,
@@ -49,7 +49,7 @@ def main(argv: Sequence[str] | None = None) -> Path:
         max_new_tokens=args.max_new_tokens,
     )
     path = write_rollout_records(args.output, outputs)
-    print(f"步骤 3/3 完成：{len(outputs)} 条 rollout 写入 {path}。")
+    print(f"Step 3/3 complete: wrote {len(outputs)} rollouts to {path}.")
     return path
 
 

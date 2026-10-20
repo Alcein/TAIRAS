@@ -942,7 +942,7 @@ def run_compiler_replacement_evaluation(
     # claim.  The private hashes are captured at the start of Stage B instead.
     hashes_before = {key: _file_sha256(value) for key, value in public_source_paths.items()}
 
-    progress("步骤 1/6：加载固定 public manifest 与 public prompts；此阶段不打开 trainer-private。")
+    progress("Step 1/6: loading the fixed public manifest and public prompts; trainer-private data is not opened at this stage.")
     sample_manifest = load_replacement_sample_manifest(sample_manifest_path)
     if sample_manifest.dataset_build_name != dataset_dir.name or sample_manifest.split != spec.split:
         raise ValueError("sample manifest does not identify the configured dataset split")
@@ -961,9 +961,9 @@ def run_compiler_replacement_evaluation(
         denied = _denied_key_paths(public.public_prompt.model_dump(mode="json", by_alias=True))
         if forbidden or denied:
             raise ValueError(f"public compiler prompt contains private keys: {forbidden + denied}")
-    progress(f"步骤 1/6 完成：固定样本={len(selected)}，episode ID=0，gold 字段=0。")
+    progress(f"Step 1/6 complete: fixed samples={len(selected)}, episode IDs=0, gold fields=0.")
 
-    progress("步骤 2/6：固定唯一 SCTP/CIV/Pattern/retrieval 下游，三套编译器共享同一实例。")
+    progress("Step 2/6: fixing one shared SCTP/CIV/Pattern/retrieval downstream instance for all three compilers.")
     if downstream_evaluator is None:
         downstream_evaluator = FrozenTAIRAMTDownstream.from_spec(
             spec.downstream,
@@ -975,12 +975,12 @@ def run_compiler_replacement_evaluation(
     if denied_downstream:
         raise ValueError(f"downstream identity contains private/episode keys: {denied_downstream}")
     progress(
-        "步骤 2/6 完成："
-        f"Pattern={downstream_identity.get('pattern_library_id', 'injected')}，"
-        f"CIV={downstream_identity.get('civ_model_id', 'injected')}。"
+        "Step 2/6 complete: "
+        f"Pattern={downstream_identity.get('pattern_library_id', 'injected')}, "
+        f"CIV={downstream_identity.get('civ_model_id', 'injected')}."
     )
 
-    progress("步骤 3/6：只用 public history 重放三套输出并冻结 Pattern frontier 与最终动作。")
+    progress("Step 3/6: replaying all three sets of outputs using only public history and freezing the Pattern frontier and final actions.")
     public_rows: dict[tuple[str, str], PublicStageEvaluation] = {}
     for system in spec.systems:
         rollout_by_id = _load_index(
@@ -1003,10 +1003,10 @@ def run_compiler_replacement_evaluation(
                 downstream=downstream_evaluator,
                 fallback_to_rule=spec.downstream.fallback_to_rule,
             )
-        progress(f"  {system.system_id}: public downstream={len(rollout_by_id)} 条。")
-    progress("步骤 3/6 完成：public 下游快照已冻结；现在才允许进入 private 计分阶段。")
+        progress(f"  {system.system_id}: public downstream={len(rollout_by_id)} records.")
+    progress("Step 3/6 complete: public downstream snapshots are frozen; private scoring may now begin.")
 
-    progress("步骤 4/6：首次打开 trainer-private，只连接 gold next state 并计算状态/下游指标。")
+    progress("Step 4/6: opening trainer-private data for the first time, joining only gold next states, and computing state/downstream metrics.")
     hashes_before.update(
         {key: _file_sha256(value) for key, value in private_source_paths.items()}
     )
@@ -1067,9 +1067,9 @@ def run_compiler_replacement_evaluation(
                 )
             )
         scored_by_system[system.system_id] = rows
-    progress("步骤 4/6 完成：gold 只参与 post-freeze scoring，没有回流到编译或下游决策。")
+    progress("Step 4/6 complete: gold data was used only for post-freeze scoring, with no feedback into compilation or downstream decisions.")
 
-    progress("步骤 5/6：汇总三系统，并在相同 sample IDs 上做 paired bootstrap。")
+    progress("Step 5/6: summarizing three systems and running paired bootstrap on the same sample IDs.")
     systems = [
         ReplacementSystemSummary(
             system_id=system.system_id,
@@ -1121,9 +1121,9 @@ def run_compiler_replacement_evaluation(
                 metrics=metrics,
             )
         )
-    progress(f"步骤 5/6 完成：系统={len(systems)}，paired comparisons={len(paired_results)}。")
+    progress(f"Step 5/6 complete: systems={len(systems)}, paired comparisons={len(paired_results)}.")
 
-    progress("步骤 6/6：核对源文件未变，写入 paper 表、private ledger 与内容寻址 manifest。")
+    progress("Step 6/6: checking that source files are unchanged and writing paper tables, private ledgers, and content-addressed manifests.")
     source_paths = {**public_source_paths, **private_source_paths}
     hashes_after = {key: _file_sha256(value) for key, value in source_paths.items()}
     if hashes_after != hashes_before:
@@ -1227,7 +1227,7 @@ def run_compiler_replacement_evaluation(
         "outputs": _output_ledger(run_dir),
     }
     _write_idempotently(run_dir / "manifest.json", canonical_json(manifest) + "\n")
-    progress(f"步骤 6/6 完成：近无损替换评测工件={run_dir}。")
+    progress(f"Step 6/6 complete: near-lossless replacement evaluation artifacts={run_dir}.")
     return CompilerReplacementEvaluationResult(run_id=run_id, run_dir=str(run_dir), report=report)
 
 

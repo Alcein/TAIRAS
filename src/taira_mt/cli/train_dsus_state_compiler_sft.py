@@ -92,15 +92,15 @@ def main(argv: Sequence[str] | None = None) -> Path:
     config, base_dir = load_sft_config(args.config)
     config = _overrides(config, args)
     use_deepspeed = config.deepspeed_config is not None and not args.disable_deepspeed
-    mode = "ZeRO-2" if use_deepspeed else "plain DDP/单卡"
-    print(f"训练模式：{mode}；packing={config.packing}；LoRA r={config.lora_rank}。")
+    mode = "ZeRO-2" if use_deepspeed else "plain DDP/single GPU"
+    print(f"Training mode: {mode}; packing={config.packing}; LoRA r={config.lora_rank}.")
     output = run_lora_sft(
         config=config,
         config_base_dir=base_dir,
         disable_deepspeed=args.disable_deepspeed,
         resume_from_checkpoint=args.resume_from_checkpoint,
     )
-    print(f"DSUS State Compiler SFT 完成：{output}")
+    print(f"DSUS State Compiler SFT complete: {output}")
     return output
 
 

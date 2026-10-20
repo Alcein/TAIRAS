@@ -327,17 +327,17 @@ def run_scale_postlabel_pipeline(config: ScalePostlabelPipelineConfig) -> Path:
         raise FileExistsError(f"refusing to overwrite pipeline output: {config.output_dir}")
     stages = _planned_outputs(config.output_dir)
 
-    print("总流程 1/6：物化 validated-teacher acceptance adapter（API=0，GPU=0）。", flush=True)
+    print("Pipeline 1/6: materializing the validated-teacher acceptance adapter (API=0, GPU=0).", flush=True)
     adapter = _materialize_acceptance_adapter(
         config,
         output_dir=stages["acceptance_adapter"],
     )
     print(
-        f"总流程 1/6 完成：{preflight.manifest_count} 个冻结样本均进入同一 validated layer。",
+        f"Pipeline 1/6 complete: all {preflight.manifest_count} frozen samples entered the same validated layer.",
         flush=True,
     )
 
-    print("总流程 2/6：复用 Real500 freezer，按 trajectory 一次性冻结 train/dev/test。", flush=True)
+    print("Pipeline 2/6: reusing the Real500 freezer to freeze train/dev/test by trajectory in one pass.", flush=True)
     from taira_mt.cli.freeze_dsus_teacher_snapshot_sft import main as freeze_main
 
     freeze_args: list[str] = []
@@ -364,9 +364,9 @@ def run_scale_postlabel_pipeline(config: ScalePostlabelPipelineConfig) -> Path:
         )
     )
     freeze_main(freeze_args)
-    print("总流程 2/6 完成：所有 trajectory siblings 继承唯一 split。", flush=True)
+    print("Pipeline 2/6 complete: all trajectory siblings inherit a single split.", flush=True)
 
-    print("总流程 3/6：复用 deterministic snapshot differ，并由 production reducer 回放。", flush=True)
+    print("Pipeline 3/6: reusing the deterministic snapshot differ and replaying through the production reducer.", flush=True)
     from taira_mt.cli.compile_dsus_teacher_snapshot_transitions import main as differ_main
 
     differ_main(
@@ -377,9 +377,9 @@ def run_scale_postlabel_pipeline(config: ScalePostlabelPipelineConfig) -> Path:
             str(stages["adjacent_differ"]),
         ]
     )
-    print("总流程 3/6 完成：不可表达 patch 只进入 ledger，不会猜测标签。", flush=True)
+    print("Pipeline 3/6 complete: unrepresentable patches are recorded only in the ledger; labels are never guessed.", flush=True)
 
-    print("总流程 4/6：复用 cold reconstruction，执行 EMPTY→current state reducer 与 token 预检。", flush=True)
+    print("Pipeline 4/6: reusing cold reconstruction and running EMPTY-to-current-state reducer and token preflight checks.", flush=True)
     from taira_mt.cli.build_dsus_teacher_snapshot_cold_reconstruction import main as cold_main
 
     cold_main(
@@ -399,9 +399,9 @@ def run_scale_postlabel_pipeline(config: ScalePostlabelPipelineConfig) -> Path:
             str(stages["adjacent_differ"] / "transitions.compiled.jsonl"),
         ]
     )
-    print("总流程 4/6 完成：只释放 reducer-verified cold patches。", flush=True)
+    print("Pipeline 4/6 complete: only reducer-verified cold patches are released.", flush=True)
 
-    print("总流程 5/6：把 replay-certified opening/adjacent patches 适配为增量 SFT view。", flush=True)
+    print("Pipeline 5/6: adapting replay-certified opening/adjacent patches into incremental SFT views.", flush=True)
     from taira_mt.cli.build_dsus_real_adjacent_sft import build_adjacent_sft
 
     build_adjacent_sft(
@@ -411,9 +411,9 @@ def run_scale_postlabel_pipeline(config: ScalePostlabelPipelineConfig) -> Path:
         expected_split_counts=None,
         enforce_real500_scope=False,
     )
-    print("总流程 5/6 完成：Scale scope 不继承 Real500 的 142 条硬编码。", flush=True)
+    print("Pipeline 5/6 complete: Scale scope does not inherit the hardcoded Real500 count of 142.", flush=True)
 
-    print("总流程 6/6：构建 evidence-first Open-SFT，并按声明比例混入 controlled rehearsal。", flush=True)
+    print("Pipeline 6/6: building evidence-first Open-SFT and mixing controlled rehearsal at the declared ratio.", flush=True)
     from taira_mt.state_training.scale_open_sft import build_scale_evidence_first_open_sft
 
     build_scale_evidence_first_open_sft(
@@ -424,7 +424,7 @@ def run_scale_postlabel_pipeline(config: ScalePostlabelPipelineConfig) -> Path:
         controlled_rehearsal_ratio=config.controlled_rehearsal_ratio,
         selection_seed=config.controlled_selection_seed,
     )
-    print("总流程 6/6 完成：数据已冻结，尚未启动 SFT/RL trainer。", flush=True)
+    print("Pipeline 6/6 complete: data is frozen; the SFT/RL trainer has not been started.", flush=True)
 
     summary = {
         "schema_version": SCALE_POSTLABEL_PIPELINE_VERSION,
@@ -447,7 +447,7 @@ def run_scale_postlabel_pipeline(config: ScalePostlabelPipelineConfig) -> Path:
         },
     }
     _write_new(config.output_dir / "pipeline_summary.json", canonical_json(summary) + "\n")
-    print(f"全部完成：Scale post-label 数据链冻结到 {config.output_dir}。", flush=True)
+    print(f"Complete: Scale post-label data pipeline frozen at {config.output_dir}.", flush=True)
     return config.output_dir
 
 

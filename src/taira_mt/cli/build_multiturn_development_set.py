@@ -35,25 +35,25 @@ def main() -> None:
     api_key = os.getenv(args.api_key_env, "").strip()
     if not args.api_base_url or not api_key:
         raise SystemExit(
-            "缺少模型配置：请通过 --api-base-url 和环境变量 "
-            f"{args.api_key_env} 提供兼容 OpenAI 的 endpoint 与密钥；程序不会把密钥写入 artifact。"
+            "Missing model configuration: provide an OpenAI-compatible endpoint via --api-base-url and an API key via environment variable "
+            f"{args.api_key_env}; the key will not be written to artifacts."
         )
     selected_case_ids = {value.strip() for value in args.case_ids.split(",") if value.strip()}
     case_count = len(selected_case_ids) or args.case_limit or len(DEVELOPMENT_BLUEPRINTS)
-    print("步骤 1/4：正在读取固定的三领域×五状态发展轨迹蓝图。")
-    mode = "仅生成可运行轨迹" if args.generation_only else "作者、独立审校和必要修订"
-    print(f"阶段完成：本次将处理 {case_count} 条轨迹；模式：{mode}。")
+    print("Step 1/4: reading the fixed trajectory blueprint for three domains and five state-development patterns.")
+    mode = "runnable trajectory generation only" if args.generation_only else "authoring, independent review, and revision as needed"
+    print(f"Stage complete: processing {case_count} trajectories; mode: {mode}.")
     # The compact benchmark contract is intentionally short enough to avoid
     # truncated JSON while retaining state, evidence, and Thought Pattern.
     author_caller = openai_json_caller(args.api_base_url, api_key, args.author_model, temperature=0.0, max_tokens=1400)
     judge_caller = None if args.generation_only else openai_json_caller(args.api_base_url, api_key, args.judge_model, temperature=0.0, max_tokens=900)
-    print("步骤 2/4：正在用强模型生成严格遵循 source-query 的轨迹契约。")
+    print("Step 2/4: using a strong model to generate trajectory contracts that strictly follow the source query.")
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     def checkpoint(records: list[dict[str, object]]) -> None:
         write_development_cases(records, args.output_dir)
         (args.output_dir / "quality_audit.md").write_text(render_development_audit(records), encoding="utf-8")
-        print(f"阶段完成：已持久化 {len(records)} 条轨迹的作者稿、审校和准入状态。", flush=True)
+        print(f"Stage complete: persisted drafts, reviews, and admission status for {len(records)} trajectories.", flush=True)
 
     records = build_development_cases(
         args.data_root,
@@ -65,13 +65,13 @@ def main() -> None:
         checkpoint=checkpoint,
         generation_only=args.generation_only,
     )
-    print("步骤 3/4：正在冻结轨迹记录与运行所需证据。")
+    print("Step 3/4: freezing trajectory records and evidence required at runtime.")
     write_development_cases(records, args.output_dir)
     (args.output_dir / "quality_audit.md").write_text(render_development_audit(records), encoding="utf-8")
     admitted = sum(record["admitted"] for record in records)
-    print("步骤 4/4：已写出可人工展示和复核的开发轨迹 artifact。")
-    label = "已生成可运行轨迹" if args.generation_only else "通过全部质量门槛"
-    print(f"全部完成：{admitted}/{len(records)} 条{label}，输出目录为 {args.output_dir.resolve()}。")
+    print("Step 4/4: wrote development trajectory artifacts for human presentation and review.")
+    label = "runnable trajectories generated" if args.generation_only else "trajectories passed all quality gates"
+    print(f"Complete: {admitted}/{len(records)} {label}; output directory: {args.output_dir.resolve()}.")
 
 
 if __name__ == "__main__":

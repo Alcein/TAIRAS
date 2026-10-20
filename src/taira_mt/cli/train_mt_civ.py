@@ -237,7 +237,7 @@ def _evaluate(model: CIVPairwiseLinearRanker, decisions: list[dict[str, Any]]) -
 
 def main() -> None:
     args = parse_args()
-    print("步骤 1/5：加载 30 条开发轨迹并核验与冻结测试 source-disjoint。", flush=True)
+    print("Step 1/5: loading 30 development trajectories and checking that their sources are disjoint from the frozen test set.", flush=True)
     records = _read_jsonl(args.development_trajectories)
     test_keys = {str(row["candidate_key"]) for row in _read_jsonl(args.test_allocation_manifest)}
     development_keys = {
@@ -248,11 +248,11 @@ def main() -> None:
         raise ValueError(f"CIV development sources overlap frozen test: {sorted(overlap)[:3]}")
     train_ids, dev_ids = _split(records)
     print(
-        f"步骤 1/5 完成：train cases={len(train_ids)}，dev cases={len(dev_ids)}，source overlap=0。",
+        f"Step 1/5 complete: train cases={len(train_ids)}, dev cases={len(dev_ids)}, source overlap=0.",
         flush=True,
     )
 
-    print("步骤 2/5：用开发期 gold state 枚举 SCTP 合法反事实行动。", flush=True)
+    print("Step 2/5: enumerating legal SCTP counterfactual actions using development-time gold states.", flush=True)
     library = ThoughtPatternLibrary.default()
     compiler = SCTPSkillCompiler(
         library=library,
@@ -279,32 +279,32 @@ def main() -> None:
             decisions.append(_decision_row(record=record, frontier=frontier))
             completed += 1
             if completed == len(records) or completed % 5 == 0:
-                print(f"阶段进度：已构建 {completed}/{len(records)} 个 CIV 决策分叉。", flush=True)
+                print(f"Progress: built {completed}/{len(records)} CIV decision forks.", flush=True)
         del retriever
         gc.collect()
-    print("步骤 2/5 完成：所有训练标签均来自离线开发分叉，在线模型只保留公开特征。", flush=True)
+    print("Step 2/5 complete: all training labels come from offline development forks; the online model retains only public features.", flush=True)
 
-    print("步骤 3/5：把最优分叉与其余合法分叉转换为成对偏好。", flush=True)
+    print("Step 3/5: converting the best fork and the remaining legal forks into pairwise preferences.", flush=True)
     train_decisions = [row for row in decisions if row["case_id"] in train_ids]
     dev_decisions = [row for row in decisions if row["case_id"] in dev_ids]
     differences, labels = _pairwise_rows(train_decisions)
     print(
-        f"步骤 3/5 完成：pairwise rows={len(labels)}，feature_dim={differences.shape[1]}。",
+        f"Step 3/5 complete: pairwise rows={len(labels)}, feature_dim={differences.shape[1]}.",
         flush=True,
     )
 
-    print("步骤 4/5：训练透明的线性 pairwise CIV，并在留出的 10 条开发轨迹上评估。", flush=True)
+    print("Step 4/5: training a transparent linear pairwise CIV and evaluating on 10 held-out development trajectories.", flush=True)
     model = CIVPairwiseLinearRanker.fit(differences, labels)
     train_metrics = _evaluate(model, train_decisions)
     dev_metrics = _evaluate(model, dev_decisions)
     print(
-        "步骤 4/5 完成："
-        f"dev optimal={dev_metrics['optimal_proposal_rate']:.3f}，"
-        f"dev action={dev_metrics['initial_action_accuracy']:.3f}。",
+        "Step 4/5 complete: "
+        f"dev optimal={dev_metrics['optimal_proposal_rate']:.3f}, "
+        f"dev action={dev_metrics['initial_action_accuracy']:.3f}.",
         flush=True,
     )
 
-    print("步骤 5/5：保存模型、公开特征契约和 evaluator-only 开发诊断。", flush=True)
+    print("Step 5/5: saving the model, public feature contract, and evaluator-only development diagnostics.", flush=True)
     output_dir = args.output_root / model.model_id
     output_dir.mkdir(parents=True, exist_ok=True)
     model.save(output_dir / "model.joblib")
@@ -345,7 +345,7 @@ def main() -> None:
         "".join(canonical_json(row) + "\n" for row in diagnostic_rows),
         encoding="utf-8",
     )
-    print(f"全部完成：CIV pairwise 模型已保存到 {output_dir.resolve()}。", flush=True)
+    print(f"Complete: CIV pairwise model saved to {output_dir.resolve()}.", flush=True)
 
 
 if __name__ == "__main__":

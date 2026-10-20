@@ -27,22 +27,22 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def main(argv: Sequence[str] | None = None) -> Path | None:
     args = parse_args(argv)
-    print("预检步骤 1/2：读取 typed config 并解析 project-root-relative 路径。", flush=True)
+    print("Preflight step 1/2: reading the typed config and resolving project-root-relative paths.", flush=True)
     config = load_scale_postlabel_config(args.config)
-    print(f"预检步骤 1/2 完成：输出根目录={config.output_dir}。", flush=True)
+    print(f"Preflight step 1/2 complete: output root={config.output_dir}.", flush=True)
 
-    print("预检步骤 2/2：核对 public/routing/manifest、完整 trajectory 与 OOD 隔离证据。", flush=True)
+    print("Preflight step 2/2: checking public/routing/manifest files, complete trajectories, and OOD isolation evidence.", flush=True)
     report = preflight_scale_postlabel_pipeline(config)
     print(
-        "预检步骤 2/2 完成："
-        f"status={report.status}，prefix={report.public_count}，"
-        f"trajectory={report.trajectory_count}，teacher={report.teacher_validated_count}/"
-        f"{report.manifest_count}。",
+        "Preflight step 2/2 complete: "
+        f"status={report.status}, prefix={report.public_count}, "
+        f"trajectory={report.trajectory_count}, teacher={report.teacher_validated_count}/"
+        f"{report.manifest_count}.",
         flush=True,
     )
     if args.dry_run:
         print(json.dumps(report.model_dump(mode="json"), ensure_ascii=False, indent=2))
-        print("dry-run 完成：未写文件、未调用 API/GPU、未启动训练。", flush=True)
+        print("Dry-run complete: no files written, no API/GPU calls, and no training started.", flush=True)
         return None
     return run_scale_postlabel_pipeline(config)
 

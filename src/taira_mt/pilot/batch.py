@@ -262,14 +262,14 @@ def run_offline_pilot(
     patterns = default_pattern_library()
     counterfactual_config = CounterfactualRewardConfig()
 
-    progress("步骤 1/5：正在读取三领域冻结目录并构造 target-free 候选集合。")
+    progress("Step 1/5: reading frozen catalogs for three domains and constructing target-free candidate sets.")
     cases: list[BuiltPilotCase] = []
     sources: list[SourceFileRecord] = []
     for domain in sorted({spec.domain for spec in specs}):
         domain_cases, domain_sources = build_domain_cases(legacy_root, domain, specs)
         cases.extend(domain_cases)
         sources.extend(domain_sources)
-        progress(f"步骤 1/5 进度：{domain} 已构造 {len(domain_cases)} 条确定性 case。")
+        progress(f"Step 1/5 progress: constructed {len(domain_cases)} deterministic cases for {domain}.")
     cases.sort(key=lambda case: case.public_case.case_id)
     sources.sort(key=lambda source: (source.domain, source.kind, source.relative_path))
     config = _run_config(root_seed, specs, patterns.content_hash, sources, counterfactual_config)
@@ -277,9 +277,9 @@ def run_offline_pilot(
     run_id = f"pilot-{config_hash[:16]}"
     output_dir = output_root.resolve() / run_id
     output_dir.mkdir(parents=True, exist_ok=True)
-    progress(f"步骤 1/5 完成：共构造 {len(cases)} 条 case，所有 anchor 与历史商品已排除。")
+    progress(f"Step 1/5 complete: constructed {len(cases)} cases, excluding all anchors and historical items.")
 
-    progress("步骤 2/5：正在逐轮匹配 Thought Pattern 并运行多轮对话。")
+    progress("Step 2/5: matching Thought Patterns at each turn and running multi-turn dialogues.")
     public_episodes: list[PublicEpisode] = []
     private_episodes: list[PrivateEpisode] = []
     failures: list[PilotFailure] = []
@@ -309,14 +309,14 @@ def run_offline_pilot(
             public_episodes.append(public)
             private_episodes.append(private)
             actions = "→".join(turn.system_action.action_type.value for turn in public.turns)
-            progress(f"步骤 2/5 进度：{case_id} 完成，动作序列={actions}。")
+            progress(f"Step 2/5 progress: {case_id} complete, action sequence={actions}.")
         except Exception as exc:  # noqa: BLE001 - failures are explicitly persisted for batch audit
             failures.append(PilotFailure(case_id=case_id, error_type=type(exc).__name__, message=str(exc)))
     progress(
-        f"步骤 2/5 完成：成功运行 {len(public_episodes)} 条 episode，失败 {len(failures)} 条。"
+        f"Step 2/5 complete: ran {len(public_episodes)} episodes successfully; {len(failures)} failed."
     )
 
-    progress("步骤 3/5：正在生成 Ask/Recommend/Repair 私有反事实标签并执行泄漏审计。")
+    progress("Step 3/5: generating private Ask/Recommend/Repair counterfactual labels and auditing leakage.")
     counterfactual_public: list[CounterfactualPublicState] = []
     counterfactual_private: list[CounterfactualDecisionLabel] = []
     for case in cases:
@@ -348,11 +348,11 @@ def run_offline_pilot(
     if len(public_episodes) != len(private_episodes):
         raise AssertionError("public/private episode counts differ")
     if failures:
-        progress("步骤 3/5 警告：存在失败 case，详见 failures.jsonl。")
+        progress("Step 3/5 warning: some cases failed; see failures.jsonl.")
     else:
         progress(
-            f"步骤 3/5 完成：生成 {sum(len(label.action_labels) for label in counterfactual_private)} 个"
-            "反事实动作标签；目标标识泄漏为 0。"
+            f"Step 3/5 complete: generated {sum(len(label.action_labels) for label in counterfactual_private)} "
+            "counterfactual action labels; target identifier leakage is 0."
         )
 
     domain_counts = Counter(episode.domain for episode in public_episodes)
@@ -378,7 +378,7 @@ def run_offline_pilot(
         counterfactual_branch_count=sum(len(label.action_labels) for label in counterfactual_private),
     )
 
-    progress("步骤 4/5：正在保存白名单公开轨迹、私有评测轨迹与内容寻址清单。")
+    progress("Step 4/5: saving allowlisted public trajectories, private evaluation trajectories, and content-addressed manifests.")
     core_outputs: list[Path] = []
     config_path = output_dir / "config.private.snapshot.json"
     _write_json(config_path, config)
@@ -436,10 +436,10 @@ def run_offline_pilot(
     )
     manifest_path = output_dir / "manifest.json"
     _write_json(manifest_path, manifest.model_dump(mode="json"))
-    progress(f"步骤 4/5 完成：工件已保存到 {output_dir}。")
+    progress(f"Step 4/5 complete: artifacts saved to {output_dir}.")
     progress(
-        f"步骤 5/5 完成：{summary.success_count}/{summary.episode_count} 条成功，"
-        f"external_calls={summary.external_calls}。"
+        f"Step 5/5 complete: {summary.success_count}/{summary.episode_count} succeeded, "
+        f"external_calls={summary.external_calls}."
     )
     return PilotRunResult(
         output_dir=output_dir,

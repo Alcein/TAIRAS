@@ -182,7 +182,7 @@ def build_scale_evidence_first_open_sft(
     if output_dir.exists():
         raise FileExistsError(f"refusing to overwrite frozen Open-SFT artifact: {output_dir}")
 
-    print("Open-SFT 步骤 1/5：读取 cold、adjacent 与 controlled rehearsal；不会调用 API/GPU。", flush=True)
+    print("Open-SFT step 1/5: reading cold, adjacent, and controlled rehearsal data; no API/GPU calls.", flush=True)
     real_sources = {
         "cold": _load_tokenizer_rows(cold_dir, splits=SPLITS, allow_empty=True),
         "adjacent": _load_tokenizer_rows(adjacent_dir, splits=SPLITS, allow_empty=True),
@@ -201,12 +201,12 @@ def build_scale_evidence_first_open_sft(
     if any(real_counts[split] == 0 for split in SPLITS):
         raise ValueError(f"every real split must contain at least one cold/adjacent row: {real_counts}")
     print(
-        f"Open-SFT 步骤 1/5 完成：real={real_counts}，controlled train/dev="
-        f"{len(controlled['train'])}/{len(controlled['dev'])}。",
+        f"Open-SFT step 1/5 complete: real={real_counts}, controlled train/dev="
+        f"{len(controlled['train'])}/{len(controlled['dev'])}.",
         flush=True,
     )
 
-    print("Open-SFT 步骤 2/5：保持每个 real view 每 epoch 暴露一次，并按目标比例平衡 rehearsal。", flush=True)
+    print("Open-SFT step 2/5: exposing each real view once per epoch and balancing rehearsal to the target ratio.", flush=True)
     target_controlled = round(
         real_counts["train"] * controlled_rehearsal_ratio / (1.0 - controlled_rehearsal_ratio)
     )
@@ -267,21 +267,21 @@ def build_scale_evidence_first_open_sft(
     if abs(actual_ratio - controlled_rehearsal_ratio) > tolerance:
         raise AssertionError("controlled rehearsal ratio materialization drifted")
     print(
-        f"Open-SFT 步骤 2/5 完成：train={len(derived['train'])}，"
-        f"controlled={len(scheduled)}（{actual_ratio:.2%}），trajectory leakage=0。",
+        f"Open-SFT step 2/5 complete: train={len(derived['train'])}, "
+        f"controlled={len(scheduled)} ({actual_ratio:.2%}), trajectory leakage=0.",
         flush=True,
     )
 
-    print("Open-SFT 步骤 3/5：确定性打散 train，dev/test 保持 real-only。", flush=True)
+    print("Open-SFT step 3/5: deterministically shuffling train; dev/test remain real-only.", flush=True)
     derived["train"].sort(
         key=lambda row: hashlib.sha256(f"{selection_seed}:{row.sample_id}".encode()).hexdigest()
     )
     seen = [row.sample_id for split in SPLITS for row in derived[split]]
     if len(seen) != len(set(seen)):
         raise ValueError("derived Open-SFT sample IDs collide")
-    print("Open-SFT 步骤 3/5 完成：所有派生 ID 唯一，split membership 未重切。", flush=True)
+    print("Open-SFT step 3/5 complete: all derived IDs are unique; split membership is unchanged.", flush=True)
 
-    print("Open-SFT 步骤 4/5：写出 evidence-first train、real-only dev/test 与 retention monitor。", flush=True)
+    print("Open-SFT step 4/5: writing evidence-first train, real-only dev/test, and the retention monitor.", flush=True)
     output_dir.mkdir(parents=True, exist_ok=False)
     output_paths: dict[str, Path] = {}
     for split in SPLITS:
@@ -305,9 +305,9 @@ def build_scale_evidence_first_open_sft(
         "".join(canonical_json(row) + "\n" for row in lineage_rows),
         encoding="utf-8",
     )
-    print("Open-SFT 步骤 4/5 完成：训练与双 checkpoint-monitor 数据已写出。", flush=True)
+    print("Open-SFT step 4/5 complete: training data and both checkpoint-monitor datasets written.", flush=True)
 
-    print("Open-SFT 步骤 5/5：冻结比例、暴露次数、防泄漏和输入输出哈希。", flush=True)
+    print("Open-SFT step 5/5: freezing ratios, exposure counts, leakage checks, and input/output hashes.", flush=True)
     exposure_counts = Counter(source.sample_id for source, _, _ in scheduled)
     controlled_cells = Counter(cell for _, _, cell in scheduled)
     summary = {
@@ -360,7 +360,7 @@ def build_scale_evidence_first_open_sft(
     }
     manifest_path = output_dir / "manifest.json"
     manifest_path.write_text(canonical_json(manifest) + "\n", encoding="utf-8")
-    print(f"Open-SFT 步骤 5/5 完成：最终数据已冻结到 {output_dir}。", flush=True)
+    print(f"Open-SFT step 5/5 complete: final data frozen at {output_dir}.", flush=True)
     return output_dir
 
 

@@ -574,7 +574,7 @@ def main() -> None:
     }:
         raise ValueError("matched ablation flags are supported only for LLM-backed TAIRAS policies")
 
-    print("步骤 1/5：加载冻结测试 benchmark 与公开 manifest。", flush=True)
+    print("Step 1/5: loading the frozen test benchmark and public manifest.", flush=True)
     benchmark = FrozenMultiTurnBenchmark.from_artifact(args.artifact, args.data_root)
     if args.episode_manifest is not None and args.max_cases is not None:
         raise ValueError("--episode-manifest and --max-cases are mutually exclusive")
@@ -598,16 +598,16 @@ def main() -> None:
     }
     if llm_backed_policy and len(selected) > 20 and not args.allow_large_api_run:
         raise RuntimeError(
-            "Direct LLM 默认只允许最多 20 个 development/pilot case；"
-            "确认大规模 API 运行后再显式加入 --allow-large-api-run。"
+            "Direct LLM is limited to 20 development/pilot cases by default; "
+            "add --allow-large-api-run explicitly after confirming a large API run."
         )
-    print(f"步骤 1/5 完成：本次将执行 {len(selected)} 个公开案例。", flush=True)
+    print(f"Step 1/5 complete: {len(selected)} public cases selected for this run.", flush=True)
 
-    print("步骤 2/5：创建共享全商品库检索器与指定 baseline。", flush=True)
+    print("Step 2/5: creating the shared full-catalog retriever and the selected baseline.", flush=True)
     policy, route_telemetry = _build_policy(args)
-    print(f"步骤 2/5 完成：policy={policy.policy_id}，所有方法使用同一 full-catalog 检索面。", flush=True)
+    print(f"Step 2/5 complete: policy={policy.policy_id}; all methods use the same full-catalog retrieval interface.", flush=True)
 
-    print("步骤 3/5：执行公开 Agent rollout；每条完成后才读取 evaluator 指标。", flush=True)
+    print("Step 3/5: running public agent rollouts; evaluator metrics are read only after each rollout completes.", flush=True)
     rows: list[dict[str, Any]] = []
     selected_by_domain: dict[str, list[dict[str, str]]] = defaultdict(list)
     for public_case in selected:
@@ -619,7 +619,7 @@ def main() -> None:
     completed = 0
     del benchmark
     for domain in sorted(selected_by_domain):
-        print(f"阶段开始：加载 {domain} 的完整商品库并执行 {len(selected_by_domain[domain])} 个案例。", flush=True)
+        print(f"Stage start: loading the full catalog for {domain} and running {len(selected_by_domain[domain])} cases.", flush=True)
         domain_benchmark = FrozenMultiTurnBenchmark.from_artifact(args.artifact, args.data_root)
         domain_runner = MTAgentRunner(retrievers=MultiDomainRetrieverRegistry(args.retriever_root))
         for public_case in selected_by_domain[domain]:
@@ -634,13 +634,13 @@ def main() -> None:
             )
             completed += 1
             if completed == len(selected) or completed % 25 == 0:
-                print(f"阶段完成：已完成 {completed}/{len(selected)} 个 rollout。", flush=True)
+                print(f"Stage complete: finished {completed}/{len(selected)} rollouts.", flush=True)
         del domain_runner
         del domain_benchmark
         gc.collect()
-        print(f"阶段完成：{domain} 的运行时商品库与索引已释放。", flush=True)
+        print(f"Stage complete: released the runtime catalog and index for {domain}.", flush=True)
 
-    print("步骤 4/5：汇总路径成功、轮数、无效交互与 LLM token telemetry。", flush=True)
+    print("Step 4/5: summarizing path success, turn counts, invalid interactions, and LLM token telemetry.", flush=True)
     config = {
         "version": BASELINE_ROLLOUT_VERSION,
         "run_label": args.run_label,
@@ -667,12 +667,12 @@ def main() -> None:
         "llm_usage": _usage(rows),
     }
     print(
-        f"步骤 4/5 完成：success={summary['overall']['success_rate']:.4f}，"
-        f"mean turns={summary['overall']['mean_agent_turn_count']:.3f}。",
+        f"Step 4/5 complete: success={summary['overall']['success_rate']:.4f}, "
+        f"mean turns={summary['overall']['mean_agent_turn_count']:.3f}.",
         flush=True,
     )
 
-    print("步骤 5/5：保存可复核的公开轨迹与 evaluator 指标。", flush=True)
+    print("Step 5/5: saving auditable public trajectories and evaluator metrics.", flush=True)
     output_dir = args.output_root / run_id
     if output_dir.exists():
         raise FileExistsError(f"run artifact already exists: {output_dir}; choose a new --run-label")
@@ -703,7 +703,7 @@ def main() -> None:
         "".join(canonical_json(row) + "\n" for row in evaluator_rows), encoding="utf-8"
     )
     (output_dir / "summary.json").write_text(canonical_json(summary) + "\n", encoding="utf-8")
-    print(f"全部完成：baseline artifact 已保存到 {output_dir.resolve()}。", flush=True)
+    print(f"Complete: baseline artifacts saved to {output_dir.resolve()}.", flush=True)
 
 
 if __name__ == "__main__":

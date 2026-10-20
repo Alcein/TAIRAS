@@ -38,7 +38,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def main(argv: Sequence[str] | None = None) -> VerifierBatchResult:
     args = parse_args(argv)
-    print("阶段 A：public-only greedy generation；trainer-private 文件尚未读取。")
+    print("Stage A: public-only greedy generation; trainer-private files have not been read.")
     public_records = load_public_generation_inputs(args.public_prompts, limit=args.limit)
     model, tokenizer = load_model_and_adapter_for_generation(
         base_model_name_or_path=args.base_model,
@@ -61,9 +61,9 @@ def main(argv: Sequence[str] | None = None) -> VerifierBatchResult:
     }
     generation_dir = args.output_root / f"greedy-{content_sha256(run_identity)[:16]}"
     rollout_path = write_rollout_records(generation_dir / "rollout_outputs.jsonl", rollouts)
-    print(f"阶段 A 完成：{len(rollouts)} 条已冻结到 {rollout_path}。")
+    print(f"Stage A complete: {len(rollouts)} records frozen at {rollout_path}.")
 
-    print("阶段 B：生成已结束，现在才按 sample_id 连接 trainer-private verifier。")
+    print("Stage B: generation is complete; now joining the trainer-private verifier by sample_id.")
     result = score_verifier_files(
         public_path=args.public_prompts,
         private_path=args.trainer_private,
@@ -72,10 +72,10 @@ def main(argv: Sequence[str] | None = None) -> VerifierBatchResult:
         output_root=args.output_root / "verifier_scores",
     )
     print(
-        "阶段 B 完成："
-        f"accepted={result.summary.acceptance_rate:.4f}，"
-        f"state_equivalence={result.summary.component_means.get('state_equivalence', 0.0):.4f}，"
-        f"mean_reward={result.summary.mean_total_reward:.4f}。"
+        "Stage B complete: "
+        f"accepted={result.summary.acceptance_rate:.4f}, "
+        f"state_equivalence={result.summary.component_means.get('state_equivalence', 0.0):.4f}, "
+        f"mean_reward={result.summary.mean_total_reward:.4f}."
     )
     return result
 

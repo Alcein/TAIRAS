@@ -125,25 +125,25 @@ def _load_cache(path: Path) -> dict[str, dict[str, Any]]:
 def main() -> None:
     args = parse_args()
     if args.batch_size < 1 or args.batch_size > 20:
-        raise SystemExit("batch-size 必须在 1 到 20 之间。")
+        raise SystemExit("batch-size must be between 1 and 20.")
     if args.max_attempts < 1:
-        raise SystemExit("max-attempts 必须为正数。")
+        raise SystemExit("max-attempts must be positive.")
     requested_mechanisms = {
         value.strip() for value in args.rewrite_mechanisms.split(",") if value.strip()
     }
     if not requested_mechanisms or not requested_mechanisms <= REWRITE_MECHANISMS:
-        raise SystemExit("rewrite-mechanisms 包含不支持的机制。")
+        raise SystemExit("rewrite-mechanisms contains unsupported mechanisms.")
     if args.output_root.exists() and not (args.output_root / "rewrite_cache.jsonl").is_file():
-        raise FileExistsError(f"输出目录已存在且不是可续跑目录：{args.output_root}")
+        raise FileExistsError(f"Output directory already exists and cannot be resumed: {args.output_root}")
 
-    print("步骤 1/4：读取冻结 benchmark，并筛选需要状态可观察化的非 Direct 查询。", flush=True)
+    print("Step 1/4: reading the frozen benchmark and selecting non-Direct queries that need observable state information.", flush=True)
     records = load_frozen_agent_records(args.source_artifact)
     rewrite_records = [
         record for record in records if _clean(record.get("mechanism")) in requested_mechanisms
     ]
     print(
-        f"阶段完成：共 {len(records)} 条，其中 {len(rewrite_records)} 条需要一次性改写；"
-        "Direct 保持旧 TAIRA 原句。",
+        f"Stage complete: {len(records)} records in total, {len(rewrite_records)} require a one-time rewrite; "
+        "Direct queries retain the original TAIRA wording.",
         flush=True,
     )
 
@@ -161,7 +161,7 @@ def main() -> None:
     )
     transport = build_openai_compatible_json_transport(profile)
 
-    print("步骤 2/4：分批改写公开 query；模型只看原 query 与待澄清问题，不看用户最终答案。", flush=True)
+    print("Step 2/4: rewriting public queries in batches; the model sees only the original query and clarification questions, not final user answers.", flush=True)
     rewritten: dict[str, str] = {}
     usage = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "api_batches": 0}
     for start in range(0, len(rewrite_records), args.batch_size):
@@ -229,9 +229,9 @@ def main() -> None:
                 raise last_error
         rewritten.update(batch_rewrites)
         completed = min(start + len(batch), len(rewrite_records))
-        print(f"阶段进度：已完成 {completed}/{len(rewrite_records)} 条 query 改写。", flush=True)
+        print(f"Progress: rewrote {completed}/{len(rewrite_records)} queries.", flush=True)
 
-    print("步骤 3/4：冻结新公开表面，并移除与词法检索器耦合的伪相关集合。", flush=True)
+    print("Step 3/4: freezing the new public surface and removing pseudo-relevance sets coupled to the lexical retriever.", flush=True)
     output_records: list[dict[str, Any]] = []
     changed = Counter()
     for source in records:
@@ -282,12 +282,12 @@ def main() -> None:
         json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
-    print(f"阶段完成：新 benchmark 表面已写入 {artifact_path.resolve()}。", flush=True)
+    print(f"Stage complete: new benchmark surface written to {artifact_path.resolve()}.", flush=True)
 
-    print("步骤 4/4：输出冻结统计。", flush=True)
+    print("Step 4/4: reporting frozen statistics.", flush=True)
     print(
-        f"全部完成：改写 {len(rewritten)} 条，保留 {len(output_records) - len(rewritten)} 条；"
-        f"本次新调用 {usage['api_batches']} 个批次、{usage['total_tokens']} tokens。",
+        f"Complete: rewrote {len(rewritten)} records, retained {len(output_records) - len(rewritten)}; "
+        f"new calls in this run: {usage['api_batches']} batches, {usage['total_tokens']} tokens.",
         flush=True,
     )
 

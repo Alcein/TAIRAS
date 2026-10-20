@@ -665,8 +665,8 @@ def build_development_benchmark(
                 )
             if progress is not None:
                 progress(
-                    f"{domain} 的 {scenario.value} 场景已选择 "
-                    f"{selected_for_scenario}/{quota} 例。"
+                    f"{domain}/{scenario.value}: selected "
+                    f"{selected_for_scenario}/{quota} cases."
                 )
 
     by_case = {item.case_id: item for item in evidence_records}

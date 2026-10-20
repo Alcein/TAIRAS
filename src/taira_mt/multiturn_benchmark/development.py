@@ -170,7 +170,7 @@ def attach_catalog_evidence(data_root: Path, case_inputs: list[dict[str, Any]], 
 
     indexes: dict[str, CatalogSearchIndex] = {}
     for domain in sorted({case_input["domain"] for case_input in case_inputs}):
-        print(f"阶段进度：正在建立 {domain} 的开发集证据检索索引。", flush=True)
+        print(f"Progress: building the development evidence retrieval index for {domain}.", flush=True)
         indexes[domain] = CatalogSearchIndex(_catalog_rows(data_root, domain))
     enriched: list[dict[str, Any]] = []
     for case_input in case_inputs:
@@ -588,7 +588,7 @@ def build_development_cases(
     case_inputs = attach_catalog_evidence(data_root, case_inputs)
     records: list[dict[str, Any]] = []
     for position, case_input in enumerate(case_inputs, start=1):
-        print(f"阶段进度：正在构造并审校开发轨迹 {position}/{len(case_inputs)}：{case_input['case_id']}。", flush=True)
+        print(f"Progress: constructing and reviewing development trajectory {position}/{len(case_inputs)}: {case_input['case_id']}.", flush=True)
         try:
             draft = _canonicalize_trajectory(case_input, author_caller(author_messages(case_input)))
             if generation_only:
@@ -615,7 +615,7 @@ def build_development_cases(
                 else judge_caller(judge_messages(case_input, draft))
             )
         except Exception as exc:
-            print(f"阶段告警：{case_input['case_id']} 的作者或首轮审校调用失败：{type(exc).__name__}。", flush=True)
+            print(f"Warning: authoring or initial review failed for {case_input['case_id']}: {type(exc).__name__}.", flush=True)
             records.append(
                 {
                     "version": DEVELOPMENT_VERSION,
@@ -649,7 +649,7 @@ def build_development_cases(
                     else judge_caller(judge_messages(case_input, current))
                 )
         except Exception as exc:
-            print(f"阶段告警：{case_input['case_id']} 的修订或复审调用失败：{type(exc).__name__}。", flush=True)
+            print(f"Warning: revision or follow-up review failed for {case_input['case_id']}: {type(exc).__name__}.", flush=True)
             judgement = {"verdict": "reject", "scores": {}, "failure_reasons": [f"review_workflow_error: {type(exc).__name__}: {exc}"]}
         records.append(
             {

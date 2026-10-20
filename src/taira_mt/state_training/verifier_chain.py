@@ -720,7 +720,7 @@ def score_verifier_files(
     """Join three separate files by sample_id and score in deterministic order."""
 
     config = config or TVRLVRRewardConfig()
-    progress("步骤 1/4：读取 public RL prompts 与已经生成完毕的模型输出。")
+    progress("Step 1/4: reading public RL prompts and previously generated model outputs.")
     public = _unique_index(
         (PublicRLPromptRecord.model_validate(row) for row in _read_jsonl(public_path)),
         label="public prompt",
@@ -735,9 +735,9 @@ def score_verifier_files(
     )
     if leakage:
         raise ValueError(f"public prompt pool contains {leakage} trainer-private leakage records")
-    progress(f"步骤 1/4 完成：读取 {len(public)} 个 public prompts / {len(rollouts)} 个 outputs。")
+    progress(f"Step 1/4 complete: read {len(public)} public prompts / {len(rollouts)} outputs.")
 
-    progress("步骤 2/4：生成结束后才读取 trainer-private verifier，并按 sample_id 严格连接。")
+    progress("Step 2/4: reading trainer-private verifier data only after generation and joining strictly by sample_id.")
     private = _unique_index(
         (PrivateRLVerifierRecord.model_validate(row) for row in _read_jsonl(private_path)),
         label="trainer-private verifier",
@@ -751,9 +751,9 @@ def score_verifier_files(
     for sample_id in public:
         if public[sample_id].public_prompt_sha256 != private[sample_id].public_prompt_sha256:
             raise ValueError(f"public/private prompt hash mismatch: {sample_id}")
-    progress("步骤 2/4 完成：private 数据仅进入 post-generation verifier join。")
+    progress("Step 2/4 complete: private data is used only in the post-generation verifier join.")
 
-    progress("步骤 3/4：依次执行 schema/evidence/legality/replay/state/persistence/concision 验证链。")
+    progress("Step 3/4: running the schema/evidence/legality/replay/state/persistence/concision verification chain in order.")
     scores = [
         score_verifier_sample(
             public[sample_id],
@@ -765,13 +765,13 @@ def score_verifier_files(
     ]
     summary = _batch_summary(scores)
     progress(
-        f"步骤 3/4 完成：accepted={summary.accepted_count}/{summary.sample_count}，"
-        f"mean reward={summary.mean_total_reward:.4f}。"
+        f"Step 3/4 complete: accepted={summary.accepted_count}/{summary.sample_count}, "
+        f"mean reward={summary.mean_total_reward:.4f}."
     )
 
     run_dir: Path | None = None
     if output_root is not None:
-        progress("步骤 4/4：写入内容寻址的 trainer-private score 工件与审计 manifest。")
+        progress("Step 4/4: writing content-addressed trainer-private score artifacts and audit manifests.")
         input_ledger = {
             "public_prompt_pool": _file_sha256(public_path),
             "trainer_private_verifier": _file_sha256(private_path),
@@ -814,9 +814,9 @@ def score_verifier_files(
             "outputs": outputs,
         }
         (run_dir / "manifest.json").write_text(canonical_json(manifest) + "\n", encoding="utf-8")
-        progress(f"步骤 4/4 完成：离线 verifier 工件写入 {run_dir}。")
+        progress(f"Step 4/4 complete: offline verifier artifacts written to {run_dir}.")
     else:
-        progress("步骤 4/4：未指定 output_root，仅返回内存评分；未写文件。")
+        progress("Step 4/4: no output_root specified; returning in-memory scores without writing files.")
     return VerifierBatchResult(
         scores=scores,
         summary=summary,

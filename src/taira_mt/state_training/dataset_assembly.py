@@ -1143,7 +1143,7 @@ def assemble_training_dataset(
             "cold reconstruction requires full public_history; latest_observation_count must be null"
         )
 
-    progress("步骤 1/5：读取 compiled transition 与私有 lineage，并验证逐轨迹回放链。")
+    progress("Step 1/5: reading compiled transitions and private lineage, and validating replay chains for each trajectory.")
     loaded = [_load_source(source, base_dir=spec_base_dir) for source in spec.sources]
     all_lineages: list[RootLineage] = []
     owners_by_root: dict[str, set[str]] = defaultdict(set)
@@ -1161,13 +1161,13 @@ def assemble_training_dataset(
         + excluded_transition_count
     )
     progress(
-        f"步骤 1/5 完成：加载 {len(all_lineages)} 个 roots、"
-        f"{input_transition_count} 个输入 records（唯一 transition="
-        f"{unique_input_transition_count}，质量过滤 root={excluded_root_count} / "
-        f"transition={excluded_transition_count}）。"
+        f"Step 1/5 complete: loaded {len(all_lineages)} roots, "
+        f"{input_transition_count} input records (unique transitions="
+        f"{unique_input_transition_count}, quality-filtered roots={excluded_root_count} / "
+        f"transition={excluded_transition_count})."
     )
 
-    progress("步骤 2/5：审计 root/query/item/user 跨 split 泄漏，并冻结 train/dev/test。")
+    progress("Step 2/5: auditing root/query/item/user leakage across splits and freezing train/dev/test.")
     leakage = audit_split_leakage(all_lineages)
     if not leakage.passed:
         failed = [axis.axis for axis in leakage.axes if not axis.passed]
@@ -1175,9 +1175,9 @@ def assemble_training_dataset(
     multiply_owned = sorted(root_id for root_id, owners in owners_by_root.items() if len(owners) > 1)
     if multiply_owned:
         raise ValueError(f"roots appear in multiple source inputs: {multiply_owned[:10]}")
-    progress(f"步骤 2/5 完成：四类 lineage overlap 均为 0；root 分布={leakage.split_root_counts}。")
+    progress(f"Step 2/5 complete: all four lineage overlap counts are 0; root distribution={leakage.split_root_counts}.")
 
-    progress("步骤 3/5：投影共享 SFT/RLVR public prompt，检查冲突标签并执行内容去重。")
+    progress("Step 3/5: projecting shared SFT/RLVR public prompts, checking conflicting labels, and deduplicating content.")
     candidates: list[_Candidate] = []
     for source in loaded:
         for row in source.compiled_rows:
@@ -1244,10 +1244,10 @@ def assemble_training_dataset(
     )
     derived_view_count = len(unique_candidates) - base_unique_count
     progress(
-        f"步骤 3/5 完成：保留 {len(unique_candidates)} 个唯一 paired samples，"
-        f"移除 {deduplicated_count} 个重复记录，"
-        f"丢弃 {ambiguous_prompt_dropped_count} 个公开输入不足以唯一判定标签的记录，"
-        f"确定性补充 {derived_view_count} 个 cold/noop 训练视图。"
+        f"Step 3/5 complete: retained {len(unique_candidates)} unique paired samples, "
+        f"removed {deduplicated_count} duplicate records, "
+        f"dropped {ambiguous_prompt_dropped_count} records whose public inputs do not uniquely determine the label, "
+        f"and deterministically added {derived_view_count} cold/noop training views."
     )
 
     source_ledger = []
@@ -1290,7 +1290,7 @@ def assemble_training_dataset(
     run_dir = output_root.resolve() / f"dsus-training-data-{build_id[:16]}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    progress("步骤 4/5：按 split 写入 paired views、私有 verifier 与安全 tokenizer exports。")
+    progress("Step 4/5: writing paired views, private verifiers, and safe tokenizer exports by split.")
     registry: list[SampleRegistryRecord] = []
     view_registry: list[TrainingViewRegistryRecord] = []
     sft_by_split: dict[DatasetSplit, list[SFTTrainingView]] = defaultdict(list)
@@ -1386,9 +1386,9 @@ def assemble_training_dataset(
             run_dir / "ambiguous_prompt_audit.private.json",
             canonical_json(ambiguity_audit) + "\n",
         )
-    progress(f"步骤 4/5 完成：训练视图已写入 {run_dir}。")
+    progress(f"Step 4/5 complete: training views written to {run_dir}.")
 
-    progress("步骤 5/5：汇总 domain/mechanism/difficulty/curriculum 分层并冻结 manifest。")
+    progress("Step 5/5: summarizing domain/mechanism/difficulty/curriculum strata and freezing the manifest.")
     leakage_payload = leakage.model_dump(mode="json")
     _write_idempotently(run_dir / "leakage_audit.json", canonical_json(leakage_payload) + "\n")
     summary = {
@@ -1454,7 +1454,7 @@ def assemble_training_dataset(
         "outputs": outputs,
     }
     _write_idempotently(run_dir / "manifest.json", canonical_json(manifest) + "\n")
-    progress(f"步骤 5/5 完成：sample={len(registry)}，deduplicated={deduplicated_count}，external_calls=False。")
+    progress(f"Step 5/5 complete: sample={len(registry)}, deduplicated={deduplicated_count}, external_calls=False.")
     return DatasetAssemblyResult(
         build_id=build_id,
         run_dir=str(run_dir),

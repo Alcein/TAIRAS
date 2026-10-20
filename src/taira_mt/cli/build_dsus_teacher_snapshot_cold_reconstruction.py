@@ -184,28 +184,28 @@ def main(argv: Sequence[str] | None = None) -> Path:
     if any(path.exists() for path in paths.values()):
         raise FileExistsError("refusing to overwrite an existing cold-reconstruction build")
 
-    print("步骤 1/5：严格读取冻结 full-snapshot SFT；不打开 API、不使用 GPU。", flush=True)
+    print("Step 1/5: strictly reading frozen full-snapshot SFT; no API or GPU use.", flush=True)
     records = _read_full_snapshot_sft(source)
-    print(f"步骤 1/5 完成：读取 {len(records)} 条冻结 snapshot。", flush=True)
+    print(f"Step 1/5 complete: read {len(records)} frozen snapshots.", flush=True)
 
-    print("步骤 2/5：从 EMPTY 编译完整历史 recovery patch，并用 production reducer 回放。", flush=True)
+    print("Step 2/5: compiling full-history recovery patches from EMPTY and replaying through the production reducer.", flush=True)
     result = build_cold_reconstruction_views(records)
     print(
-        "步骤 2/5 完成："
-        f"replay-verified={len(result.transitions)}，"
-        f"representation-limited={len(result.representation_limits)}。",
+        "Step 2/5 complete: "
+        f"replay-verified={len(result.transitions)}, "
+        f"representation-limited={len(result.representation_limits)}.",
         flush=True,
     )
 
-    print("步骤 3/5：写入完整 transition 与 representation-limit ledger。", flush=True)
+    print("Step 3/5: writing complete transitions and the representation-limit ledger.", flush=True)
     _write_new(paths["transitions"], _jsonl(result.transitions))
     _write_new(paths["limits"], _jsonl(result.representation_limits))
     print(
-        "步骤 3/5 完成：完整 cold transition 已保留；原 adjacent artifact 未修改。",
+        "Step 3/5 complete: complete cold transitions retained; the original adjacent artifact is unchanged.",
         flush=True,
     )
 
-    print("步骤 4/5：使用本地 tokenizer 做真实 chat-template 4096-token 预检。", flush=True)
+    print("Step 4/5: running an actual chat-template 4096-token preflight check with the local tokenizer.", flush=True)
     from transformers import AutoTokenizer
 
     tokenizer = AutoTokenizer.from_pretrained(
@@ -255,12 +255,12 @@ def main(argv: Sequence[str] | None = None) -> Path:
     excluded_by_split = Counter(str(row["split"]) for row in excluded_rows)
     over_limit = len(excluded_rows)
     print(
-        f"步骤 4/5 完成：最大观测长度={maximum}，tokenizer_sft 超限=0，"
-        f"完整 transition 保留但排除训练={over_limit}。",
+        f"Step 4/5 complete: maximum observed length={maximum}, tokenizer_sft over limit=0, "
+        f"complete transitions retained but excluded from training={over_limit}.",
         flush=True,
     )
 
-    print("步骤 5/5：登记独立 adjacent artifact、冻结 summary 与哈希 manifest。", flush=True)
+    print("Step 5/5: registering the separate adjacent artifact and freezing the summary and hash manifest.", flush=True)
     updates: dict[str, Any] = {
         "tokenizer_audited": True,
         "token_length_reports": {
@@ -337,9 +337,9 @@ def main(argv: Sequence[str] | None = None) -> Path:
     }
     _write_new(paths["manifest"], canonical_json(manifest) + "\n")
     print(
-        f"步骤 5/5 完成：artifact={output_dir}；cold={summary.compiled_cold_reconstruction_count}，"
-        f"limited={summary.representation_limited_count}，"
-        f"overlength-excluded={summary.over_limit_count}。",
+        f"Step 5/5 complete: artifact={output_dir}; cold={summary.compiled_cold_reconstruction_count}, "
+        f"limited={summary.representation_limited_count}, "
+        f"overlength-excluded={summary.over_limit_count}.",
         flush=True,
     )
     return output_dir

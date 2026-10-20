@@ -46,7 +46,7 @@ def _file_sha256(path: Path) -> str:
 def _load_object(path: Path) -> dict[str, Any]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
-        raise ValueError(f"{path} 顶层必须是 JSON 对象")
+        raise ValueError(f"{path} must have a JSON object at the top level")
     return payload
 
 
@@ -65,13 +65,13 @@ def load_family_runtime_mapping(
     paper_library = _load_object(paper_library_path)
     runtime_library = _load_object(runtime_library_path)
     if mapping.get("schema_version") != MAPPING_SCHEMA_VERSION:
-        raise ValueError("不支持的 Pattern family/runtime mapping schema")
+        raise ValueError("Unsupported Pattern family/runtime mapping schema")
     if mapping.get("granularity_contract", {}).get("counts_are_not_additive") is not True:
-        raise ValueError("mapping 必须显式声明 9 与 14 不可相加")
+        raise ValueError("mapping must explicitly declare that 9 and 14 cannot be added together")
 
     sources = mapping.get("sources")
     if not isinstance(sources, dict):
-        raise ValueError("mapping 缺少 sources")
+        raise ValueError("mapping is missing sources")
     paper_source = sources.get("paper_family_library", {})
     runtime_source = sources.get("runtime_entry_library", {})
     actual_paper_file_hash = _file_sha256(paper_library_path)
@@ -86,11 +86,11 @@ def load_family_runtime_mapping(
     )
     for expected, actual, label in expected_actual_pairs:
         if expected != actual:
-            raise ValueError(f"{label} hash 与 mapping 声明不一致")
+            raise ValueError(f"{label} hash does not match the mapping declaration")
     if paper_source.get("library_id") != paper_library.get("library_id"):
-        raise ValueError("paper family library_id 与 mapping 声明不一致")
+        raise ValueError("paper family library_id does not match the mapping declaration")
     if runtime_source.get("schema_version") != runtime_library.get("schema_version"):
-        raise ValueError("runtime schema 与 mapping 声明不一致")
+        raise ValueError("runtime schema does not match the mapping declaration")
 
     actual_paper = {
         item["strategy_family"]: item for item in paper_library.get("patterns", []) if isinstance(item, dict)
@@ -99,23 +99,23 @@ def load_family_runtime_mapping(
     declared_family_rows = mapping.get("paper_procedural_families")
     declared_runtime_rows = mapping.get("runtime_executable_entries")
     if not isinstance(declared_family_rows, list) or not isinstance(declared_runtime_rows, list):
-        raise ValueError("mapping 必须包含 paper_procedural_families 与 runtime_executable_entries")
+        raise ValueError("mapping must contain paper_procedural_families and runtime_executable_entries")
     declared_families = {item["family_id"]: item for item in declared_family_rows}
     declared_runtime = {item["runtime_entry_id"]: item for item in declared_runtime_rows}
     if len(declared_families) != len(declared_family_rows):
-        raise ValueError("mapping 存在重复 family_id")
+        raise ValueError("mapping contains duplicate family_id values")
     if len(declared_runtime) != len(declared_runtime_rows):
-        raise ValueError("mapping 存在重复 runtime_entry_id")
+        raise ValueError("mapping contains duplicate runtime_entry_id values")
     if set(declared_families) != set(actual_paper):
-        raise ValueError("mapping 的 paper family 集合与真实 induction artifact 不一致")
+        raise ValueError("mapping paper family set does not match the actual induction artifact")
     if set(declared_runtime) != set(actual_runtime):
-        raise ValueError("mapping 的 runtime entry 集合与真实 executable library 不一致")
+        raise ValueError("mapping runtime entry set does not match the actual executable library")
     for family_id, row in declared_families.items():
         source_row = actual_paper[family_id]
         if row.get("induced_pattern_id") != source_row.get("pattern_id"):
-            raise ValueError(f"{family_id} 的 induced_pattern_id 不一致")
+            raise ValueError(f"{family_id} has an inconsistent induced_pattern_id")
         if row.get("name") != source_row.get("name"):
-            raise ValueError(f"{family_id} 的 paper name 不一致")
+            raise ValueError(f"{family_id} has an inconsistent paper name")
 
     family_to_runtime: dict[str, list[dict[str, str]]] = defaultdict(list)
     runtime_to_family: dict[str, list[dict[str, str]]] = defaultdict(list)
@@ -125,34 +125,34 @@ def load_family_runtime_mapping(
         layer = row.get("layer")
         role = row.get("implementation_role")
         if layer != source_row.get("layer"):
-            raise ValueError(f"{runtime_id} 的 layer 与真实 runtime entry 不一致")
+            raise ValueError(f"{runtime_id} layer does not match the actual runtime entry")
         expected_role = "semantic_binding_adapter" if layer == "semantic_grounding" else "procedural_control_adapter"
         if role != expected_role:
-            raise ValueError(f"{runtime_id} 的 implementation_role 与 layer 不一致")
+            raise ValueError(f"{runtime_id} implementation_role does not match its layer")
         links = row.get("paper_family_links")
         if not isinstance(links, list) or not links:
-            raise ValueError(f"{runtime_id} 没有 paper_family_links")
+            raise ValueError(f"{runtime_id} has no paper_family_links")
         seen_links: set[tuple[str, str]] = set()
         for link in links:
             family_id = link.get("family_id")
             relation = link.get("relation")
             if family_id not in declared_families:
-                raise ValueError(f"{runtime_id} 引用了未知 family {family_id}")
+                raise ValueError(f"{runtime_id} references unknown family {family_id}")
             if relation not in ALLOWED_RELATIONS:
-                raise ValueError(f"{runtime_id} 使用未知 relation {relation}")
+                raise ValueError(f"{runtime_id} uses unknown relation {relation}")
             if layer == "semantic_grounding" and relation not in {
                 "semantic_binding_support",
                 "evidence_binding_support",
             }:
-                raise ValueError(f"{runtime_id} 的 semantic entry 不能声明 control relation")
+                raise ValueError(f"{runtime_id} semantic entry cannot declare a control relation")
             if layer == "interaction_control" and relation in {
                 "semantic_binding_support",
                 "evidence_binding_support",
             }:
-                raise ValueError(f"{runtime_id} 的 interaction entry 不能声明 semantic relation")
+                raise ValueError(f"{runtime_id} interaction entry cannot declare a semantic relation")
             pair = (family_id, relation)
             if pair in seen_links:
-                raise ValueError(f"{runtime_id} 重复声明同一 family relation")
+                raise ValueError(f"{runtime_id} declares the same family relation more than once")
             seen_links.add(pair)
             record = {
                 "runtime_entry_id": runtime_id,
@@ -169,14 +169,14 @@ def load_family_runtime_mapping(
             relation_counts[relation] += 1
 
     if set(family_to_runtime) != set(declared_families):
-        raise ValueError("至少一个 paper family 没有 runtime correspondence")
+        raise ValueError("At least one paper family has no runtime correspondence")
     for family_id, family in declared_families.items():
         relations = {item["relation"] for item in family_to_runtime[family_id]}
         status = str(family.get("runtime_realization_status", ""))
         if status != "embedded_not_standalone_in_main_controller" and "primary_control" not in relations:
-            raise ValueError(f"{family_id} 缺少 primary runtime control")
+            raise ValueError(f"{family_id} is missing a primary runtime control")
         if status == "embedded_not_standalone_in_main_controller" and "primary_control" in relations:
-            raise ValueError(f"{family_id} 声称 embedded-only 却存在 primary control")
+            raise ValueError(f"{family_id} claims embedded-only but has a primary control")
 
     layer_counts = Counter(item["layer"] for item in actual_runtime.values())
     count_contract = mapping.get("count_contract", {})
@@ -188,7 +188,7 @@ def load_family_runtime_mapping(
     }
     for key, actual in count_checks.items():
         if count_contract.get(key) != actual:
-            raise ValueError(f"count_contract.{key} 与真实来源不一致")
+            raise ValueError(f"count_contract.{key} does not match the actual source")
 
     return LoadedFamilyRuntimeMapping(
         payload=mapping,

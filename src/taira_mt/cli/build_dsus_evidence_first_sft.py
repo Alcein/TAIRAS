@@ -27,7 +27,7 @@ def main() -> Path:
         cold_repeat_limit=args.cold_repeat_limit,
         clean_per_mechanism_role=args.clean_per_mechanism_role,
     )
-    print("全部完成：仅构建数据与审计文件，未启动 GPU、训练或 API。", flush=True)
+    print("Complete: only data and audit files were built; no GPU use, training, or API calls.", flush=True)
     return output
 
 

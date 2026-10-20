@@ -25,14 +25,14 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    print("步骤 1/3：检查完整 Amazon 商品库并准备共享检索索引。", flush=True)
+    print("Step 1/3: checking the full Amazon catalogs and preparing shared retrieval indexes.", flush=True)
     if args.max_features < 1 or args.min_df < 1:
-        raise SystemExit("max-features 和 min-df 必须为正数。")
+        raise SystemExit("max-features and min-df must be positive.")
     args.output_root.mkdir(parents=True, exist_ok=True)
-    print(f"阶段完成：将为 {len(args.domains)} 个域构建独立、可缓存的公开检索器。", flush=True)
+    print(f"Stage complete: preparing independent, cacheable public retrievers for {len(args.domains)} domains.", flush=True)
     for position, domain in enumerate(args.domains, start=1):
         metadata_path = args.data_root / domain / "metadata.csv"
-        print(f"步骤 2/3：正在建立 {domain} 的全库词法索引（{position}/{len(args.domains)}）。", flush=True)
+        print(f"Step 2/3: building the full-catalog lexical index for {domain} ({position}/{len(args.domains)}).", flush=True)
         adapter = LegacyCatalogAdapter(metadata_path, domain=domain)
         index = adapter.load_index()
         pool = index.pool(
@@ -50,10 +50,10 @@ def main() -> None:
         output_path = args.output_root / domain / "lexical_index.joblib"
         retriever.save(output_path)
         print(
-            f"阶段完成：{domain} 已索引 {len(retriever.item_ids)} 件商品，写入 {output_path.resolve()}。",
+            f"Stage complete: indexed {len(retriever.item_ids)} items for {domain}, written to {output_path.resolve()}.",
             flush=True,
         )
-    print("步骤 3/3：全部共享检索索引已完成；后续所有 Agent 和 baseline 将使用同一检索面。", flush=True)
+    print("Step 3/3: all shared retrieval indexes are ready; all agents and baselines will use the same retrieval interface.", flush=True)
 
 
 if __name__ == "__main__":

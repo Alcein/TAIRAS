@@ -247,19 +247,19 @@ def build_evidence_first_real_sft(
     if output_dir.exists():
         raise FileExistsError(f"refusing to overwrite frozen artifact: {output_dir}")
 
-    print("步骤 1/5：读取旧 Real500 三视图混合集并逐条验证 DSUS 结构；不会调用 API。", flush=True)
+    print("Step 1/5: reading the legacy Real500 three-view mixture and validating each DSUS structure; no API calls.", flush=True)
     transformed, source_audits, source_lineage = _load_source_mix(source_mix_dir)
     source_counts = {split: len(rows) for split, rows in transformed.items()}
-    print(f"步骤 1/5 完成：已验证并变换 {sum(source_counts.values())} 条，split={source_counts}。", flush=True)
+    print(f"Step 1/5 complete: validated and transformed {sum(source_counts.values())} records, split={source_counts}.", flush=True)
 
-    print("步骤 2/5：验证 clean-retention 数据并应用相同 evidence-first 序列化。", flush=True)
+    print("Step 2/5: validating clean-retention data and applying the same evidence-first serialization.", flush=True)
     clean, clean_audits, clean_lineage = _load_clean_retention(clean_retention_dir)
     print(
-        f"步骤 2/5 完成：clean-retention train/dev={len(clean['train'])}/{len(clean['dev'])}。",
+        f"Step 2/5 complete: clean-retention train/dev={len(clean['train'])}/{len(clean['dev'])}.",
         flush=True,
     )
 
-    print("步骤 3/5：构造 Real-focused 续训视图与 Real-only checkpoint 选择切片。", flush=True)
+    print("Step 3/5: constructing Real-focused continuation-training views and Real-only checkpoint selection slices.", flush=True)
     lineage_by_id = {str(row["sample_id"]): row for row in source_lineage}
     focused_real_train = [
         row
@@ -310,13 +310,13 @@ def build_evidence_first_real_sft(
         for row in selected_clean_train
     )
     print(
-        "步骤 3/5 完成：focused train="
-        f"{len(focused_train)}（{dict(sorted(focused_counts.items()))}，clean={clean_ratio:.2%}），"
-        f"Real-only dev/test={len(real_dev)}/{len(real_test)}。",
+        "Step 3/5 complete: focused train="
+        f"{len(focused_train)} ({dict(sorted(focused_counts.items()))}, clean={clean_ratio:.2%}), "
+        f"Real-only dev/test={len(real_dev)}/{len(real_test)}.",
         flush=True,
     )
 
-    print("步骤 4/5：写出完整语义等价视图、focused 训练视图与逐样本审计账本。", flush=True)
+    print("Step 4/5: writing complete semantically equivalent views, focused training views, and per-sample audit ledgers.", flush=True)
     output_dir.mkdir(parents=True, exist_ok=False)
     output_paths: dict[str, Path] = {}
     for split, rows in transformed.items():
@@ -355,9 +355,9 @@ def build_evidence_first_real_sft(
         "".join(canonical_json(row) + "\n" for row in transformed_lineage),
         encoding="utf-8",
     )
-    print("步骤 4/5 完成：所有数据文件已写出；旧目录保持只读未修改。", flush=True)
+    print("Step 4/5 complete: all data files written; the legacy directory remains read-only and unchanged.", flush=True)
 
-    print("步骤 5/5：冻结 summary、provenance 与文件哈希。", flush=True)
+    print("Step 5/5: freezing summary, provenance, and file hashes.", flush=True)
     source_view_counts = {
         split: dict(
             sorted(Counter(str(lineage_by_id[row.sample_id]["source_view"]) for row in rows).items())
@@ -454,5 +454,5 @@ def build_evidence_first_real_sft(
     }
     provenance_path = output_dir / "provenance.json"
     provenance_path.write_text(canonical_json(provenance) + "\n", encoding="utf-8")
-    print(f"步骤 5/5 完成：evidence-first SFT 已冻结到 {output_dir}。", flush=True)
+    print(f"Step 5/5 complete: evidence-first SFT frozen at {output_dir}.", flush=True)
     return output_dir

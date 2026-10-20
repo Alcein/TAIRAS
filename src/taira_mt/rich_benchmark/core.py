@@ -988,12 +988,12 @@ def build_rich_benchmark(data_root: Path, config: RichBenchmarkConfig | None = N
     indexes: dict[str, CatalogSearchIndex] = {}
     cases: list[dict[str, Any]] = []
     for domain in DOMAINS:
-        print(f"阶段进度：正在建立 {domain} 全量商品文本索引。", flush=True)
+        print(f"Progress: building the full item text index for {domain}.", flush=True)
         indexes[domain] = CatalogSearchIndex(_catalog_rows(data_root, domain))
         domain_cases = [(family, source) for candidate_domain, family, source in selected if candidate_domain == domain]
         for position, (family, source) in enumerate(domain_cases, start=1):
             if position % 20 == 0 or position == len(domain_cases):
-                print(f"阶段进度：{domain} 已构造 {position}/{len(domain_cases)} 个富语义案例。", flush=True)
+                print(f"Progress: constructed {position}/{len(domain_cases)} rich semantic cases for {domain}.", flush=True)
             cases.append(_build_case(domain, family, source, indexes[domain], config))
     cases.sort(key=lambda item: item["case_id"])
     analysis = _aggregate(cases)
