@@ -1,0 +1,409 @@
+{
+  "schema_version": "mt_state_conditioned_thought_skill_v1",
+  "library_name": "TAIRAS Seeded State-Addressed Thought Patterns",
+  "library_version": "1.0.0",
+  "skills": [
+    {
+      "schema_version": "mt_state_conditioned_thought_skill_v1",
+      "pattern_id": "semantic-scenario-functional-grounding",
+      "version": "1.0.0",
+      "name": "Scenario-to-Functional Attribute Grounding",
+      "layer": "semantic_grounding",
+      "strategy_family": "occasion_attribute_conversion",
+      "task_description": "Convert a scenario-led shopping request into catalog-visible functional product attributes before retrieval.",
+      "state_description": "A request names a use occasion or outcome such as outdoor activity, travel, comfort, protection, or all-day use.",
+      "solution_description": "Keep the product type explicit, preserve the original scenario in the query, and promote only concrete functional cues that can distinguish catalog items.",
+      "applicability": {
+        "disclosure_statuses": ["sufficient", "missing_decisive", "revised"],
+        "dialogue_phases": ["initial", "recommendation", "repair"],
+        "readiness": ["recommend_now", "ask_decisive", "repair_recommend"],
+        "intent_shapes": ["occasion_to_attribute", "direct_attribute"],
+        "public_cues": ["outdoor", "travel", "comfortable", "all-day", "active"]
+      },
+      "thought_template": [
+        {"step_id": "identify-scenario", "operation": "parse_public_need", "objective": "Separate product type from use situation.", "guard": "The user names a visible occasion or desired outcome.", "on_success": "ground-functional-cues", "on_failure": "preserve-query"},
+        {"step_id": "ground-functional-cues", "operation": "compile_search_frame", "objective": "Map visible functional language into required and preferred catalog terms.", "guard": "Only public terms or their transparent lexical normalizations are used.", "on_success": "hand-off-action", "on_failure": "preserve-query"},
+        {"step_id": "preserve-query", "operation": "fallback", "objective": "Retain scenario language when no reliable attribute conversion is available.", "guard": "Catalog terminology is uncertain.", "on_success": "hand-off-action", "on_failure": "rematch"}
+      ],
+      "insights": [
+        {"trigger": "The request describes a life situation rather than a spec sheet.", "principle": "Scenario words carry preference evidence but should not erase the product type.", "intended_effect": "Avoid generic category retrieval while remaining grounded in user language."},
+        {"trigger": "A functional cue is vague.", "principle": "Use it as a preference term unless the user explicitly makes it non-negotiable.", "intended_effect": "Prevent brittle over-filtering on imperfect Amazon metadata."}
+      ],
+      "query_policy": "scenario_functional",
+      "provenance": "Seeded from legacy TAIRA occasion-to-attribute planning and train-only development taxonomy."
+    },
+    {
+      "schema_version": "mt_state_conditioned_thought_skill_v1",
+      "pattern_id": "semantic-audience-fit-grounding",
+      "version": "1.0.0",
+      "name": "Audience, Fit, and Compatibility Grounding",
+      "layer": "semantic_grounding",
+      "strategy_family": "audience_fit_conversion",
+      "task_description": "Translate visible demographic, size, body-fit, or compatibility language into high-priority catalog evidence.",
+      "state_description": "The request names an audience, life stage, body fit, or product compatibility that changes which items can be suitable.",
+      "solution_description": "Treat explicit audience and fit language as retention-critical evidence; use it to exclude incompatible taxonomy while allowing function and style to rank within the remaining pool.",
+      "applicability": {
+        "disclosure_statuses": ["sufficient", "ambiguous", "revised"],
+        "dialogue_phases": ["initial", "elicitation", "recommendation", "repair"],
+        "readiness": ["recommend_now", "ask_decisive", "repair_recommend"],
+        "intent_shapes": ["fit_or_audience", "taxonomy_ambiguity"],
+        "public_cues": ["men's", "women's", "baby", "girls", "boys", "Big & Tall", "plus-size", "newborn"]
+      },
+      "thought_template": [
+        {"step_id": "extract-audience", "operation": "parse_public_need", "objective": "Identify audience or fit assertions stated by the user.", "guard": "An audience or compatibility cue is literally present.", "on_success": "promote-fit-evidence", "on_failure": "hand-off-action"},
+        {"step_id": "promote-fit-evidence", "operation": "compile_search_frame", "objective": "Keep compatible taxonomy and fit cues in the retrieval frame.", "guard": "The cue can be represented by title, category, or description terms.", "on_success": "hand-off-action", "on_failure": "preserve-query"}
+      ],
+      "insights": [
+        {"trigger": "Audience wording is explicit.", "principle": "Do not demote it merely because style or occasion terms are richer.", "intended_effect": "Avoid superficially attractive but incompatible recommendations."},
+        {"trigger": "Fit terms are absent from some catalog rows.", "principle": "Prefer observable compatible evidence over inventing a fit judgment.", "intended_effect": "Keep recommendation claims catalog-grounded."}
+      ],
+      "query_policy": "audience_fit",
+      "provenance": "Seeded from legacy TAIRA complex-intent fit and user-group query families."
+    },
+    {
+      "schema_version": "mt_state_conditioned_thought_skill_v1",
+      "pattern_id": "semantic-multi-occasion-branching",
+      "version": "1.0.0",
+      "name": "Multi-Occasion Branching and Shared-Core Search",
+      "layer": "semantic_grounding",
+      "strategy_family": "multi_requirement_planning",
+      "task_description": "Plan retrieval for a request that spans multiple occasions or requirement bundles without collapsing their semantic distinction.",
+      "state_description": "The user names two or more use situations, style contexts, or performance requirements that may share a product core but differ in priority.",
+      "solution_description": "Retain common product requirements, expose the distinct occasion branches, and ask for a priority only when the branches cannot be reconciled by one public retrieval frame.",
+      "applicability": {
+        "disclosure_statuses": ["sufficient", "ambiguous", "conflict"],
+        "dialogue_phases": ["initial", "elicitation", "recommendation"],
+        "readiness": ["recommend_now", "ask_decisive", "probe_recommend"],
+        "intent_shapes": ["multi_occasion", "occasion_to_attribute"],
+        "public_cues": ["casual and", "formal and", "both", "multiple", "outings"]
+      },
+      "thought_template": [
+        {"step_id": "separate-branches", "operation": "decompose_public_need", "objective": "List the shared target and the distinct visible occasions.", "guard": "More than one scenario or requirement is public.", "on_success": "test-common-frame", "on_failure": "hand-off-action"},
+        {"step_id": "test-common-frame", "operation": "compile_search_frame", "objective": "Build a common retrieval frame before requesting extra dialogue.", "guard": "The shared product type remains coherent.", "on_success": "hand-off-action", "on_failure": "request-priority"},
+        {"step_id": "request-priority", "operation": "defer-to-interaction-skill", "objective": "Ask only for the branch that determines the recommendation.", "guard": "Visible branches impose incompatible priorities.", "on_success": "rematch", "on_failure": "safe-stop"}
+      ],
+      "insights": [
+        {"trigger": "Two occasions appear in one request.", "principle": "Multiple situations are not automatically a contradiction; first preserve their shared product core.", "intended_effect": "Avoid needless questioning and preserve legacy multi-requirement planning."},
+        {"trigger": "One branch has to dominate.", "principle": "Ask about the decision boundary rather than reciting all known constraints.", "intended_effect": "Make a single clarification informative."}
+      ],
+      "query_policy": "multi_occasion",
+      "provenance": "Seeded from legacy TAIRA multi-occasion and differentiated-plan Thought Templates."
+    },
+    {
+      "schema_version": "mt_state_conditioned_thought_skill_v1",
+      "pattern_id": "semantic-matching-bundle-decomposition",
+      "version": "1.0.0",
+      "name": "Matching, Pairing, and Bundle Decomposition",
+      "layer": "semantic_grounding",
+      "strategy_family": "compositional_planning",
+      "task_description": "Handle pairing, matching, bundle, or multiple-target requests by separating the anchor need from supporting product roles.",
+      "state_description": "The request asks for compatible products, a coordinated set, or more than one product type.",
+      "solution_description": "Identify a primary recommendation target first; keep compatibility or supporting roles as retrieval preferences unless the user explicitly requires a complete bundle.",
+      "applicability": {
+        "disclosure_statuses": ["sufficient", "missing_decisive", "ambiguous"],
+        "dialogue_phases": ["initial", "elicitation", "recommendation"],
+        "readiness": ["recommend_now", "ask_decisive", "probe_recommend"],
+        "intent_shapes": ["pairing_or_matching", "bundle", "multi_target"],
+        "public_cues": ["match", "pair", "bundle", "set", "together", "with my"]
+      },
+      "thought_template": [
+        {"step_id": "identify-anchor", "operation": "decompose_public_need", "objective": "Determine the primary item role from explicit user language.", "guard": "A compositional request contains multiple product roles.", "on_success": "retain-compatibility", "on_failure": "request-anchor"},
+        {"step_id": "retain-compatibility", "operation": "compile_search_frame", "objective": "Represent compatibility as a grounded preference for the anchor search.", "guard": "The anchor product is known.", "on_success": "hand-off-action", "on_failure": "request-anchor"},
+        {"step_id": "request-anchor", "operation": "defer-to-interaction-skill", "objective": "Clarify the primary recommendation role.", "guard": "No principal product target is visible.", "on_success": "rematch", "on_failure": "safe-stop"}
+      ],
+      "insights": [
+        {"trigger": "The user asks for a coordinated outcome.", "principle": "Do not flatten all roles into one vague query.", "intended_effect": "Maintain the decomposition challenge of TAIRA's compositional intents."},
+        {"trigger": "Only one item can be returned this turn.", "principle": "Recommend the explicit anchor and explain the compatibility criterion rather than fabricating a full bundle.", "intended_effect": "Keep execution honest under catalog constraints."}
+      ],
+      "query_policy": "decompose",
+      "provenance": "Seeded from legacy TAIRA matching, pairing, bundle, and multiple-type query families."
+    },
+    {
+      "schema_version": "mt_state_conditioned_thought_skill_v1",
+      "pattern_id": "semantic-taxonomy-interpretation",
+      "version": "1.0.0",
+      "name": "Taxonomy and Scenario Interpretation",
+      "layer": "semantic_grounding",
+      "strategy_family": "ambiguity_interpretation",
+      "task_description": "Resolve a visible ambiguity in audience, category, or use interpretation before committing to a narrow catalog search.",
+      "state_description": "The request admits two materially different public interpretations that lead to different product groups or constraints.",
+      "solution_description": "Name the smallest discriminating interpretation, ask once when needed, and keep the original wording intact for the next retrieval pass.",
+      "applicability": {
+        "disclosure_statuses": ["ambiguous", "missing_decisive"],
+        "dialogue_phases": ["initial", "elicitation"],
+        "readiness": ["ask_decisive"],
+        "intent_shapes": ["taxonomy_ambiguity", "fit_or_audience"],
+        "public_cues": ["either", "both", "women and children", "men and women", "best suited"]
+      },
+      "thought_template": [
+        {"step_id": "locate-ambiguity", "operation": "inspect_public_state", "objective": "Identify the interpretation whose resolution changes the candidate pool.", "guard": "At least two public readings are plausible.", "on_success": "formulate-discriminator", "on_failure": "hand-off-action"},
+        {"step_id": "formulate-discriminator", "operation": "defer-to-interaction-skill", "objective": "Prepare a single concrete either-or or priority question.", "guard": "The ambiguity cannot be resolved from visible text.", "on_success": "rematch", "on_failure": "safe-stop"}
+      ],
+      "insights": [
+        {"trigger": "The query contains an overloaded audience or occasion term.", "principle": "Ask about the interpretation that changes catalog evidence, not a generic preference question.", "intended_effect": "Make clarification measurable and useful."}
+      ],
+      "query_policy": "taxonomy_clarify",
+      "provenance": "Seeded from legacy TAIRA ambiguous-scenario exploration patterns."
+    },
+    {
+      "schema_version": "mt_state_conditioned_thought_skill_v1",
+      "pattern_id": "semantic-feedback-priority-rewrite",
+      "version": "1.0.0",
+      "name": "Feedback-Priority Retrieval Rewrite",
+      "layer": "semantic_grounding",
+      "strategy_family": "feedback_replanning",
+      "task_description": "Rewrite a prior catalog search when the user publicly elevates a previously secondary requirement.",
+      "state_description": "A prior recommendation has triggered an explicit correction, rejection, or priority update.",
+      "solution_description": "Retain the original target, promote the newly stated priority, exclude the shown slate, and do not reopen already settled questions.",
+      "applicability": {
+        "disclosure_statuses": ["revised"],
+        "dialogue_phases": ["repair"],
+        "readiness": ["repair_recommend"],
+        "intent_shapes": ["feedback_repair", "occasion_to_attribute", "fit_or_audience"],
+        "public_cues": ["but I need", "prioritize", "first option", "instead"]
+      },
+      "thought_template": [
+        {"step_id": "diagnose-visible-feedback", "operation": "inspect_public_state", "objective": "Identify the correction stated after the prior slate.", "guard": "The user visibly refers to a previous recommendation or unmet need.", "on_success": "rewrite-frame", "on_failure": "reorient"},
+        {"step_id": "rewrite-frame", "operation": "compile_search_frame", "objective": "Promote the new priority and exclude previously shown IDs.", "guard": "At least one new public requirement is visible.", "on_success": "hand-off-action", "on_failure": "reorient"},
+        {"step_id": "reorient", "operation": "defer-to-interaction-skill", "objective": "Ask only if the feedback cannot distinguish a repair route.", "guard": "The correction is not actionable.", "on_success": "rematch", "on_failure": "safe-stop"}
+      ],
+      "insights": [
+        {"trigger": "A user says the prior option is close but changes priority.", "principle": "Treat feedback as a reweighting signal, not a total reset.", "intended_effect": "Preserve useful original intent while visibly repairing the failure."},
+        {"trigger": "A prior slate was shown.", "principle": "Do not repeat its IDs unless the user explicitly asks to compare them.", "intended_effect": "Avoid an empty repair loop."}
+      ],
+      "query_policy": "feedback_repair",
+      "provenance": "Seeded from legacy TAIRA failed-trajectory correction and new multi-turn revision traces."
+    },
+    {
+      "schema_version": "mt_state_conditioned_thought_skill_v1",
+      "pattern_id": "interaction-direct-complex-fulfillment",
+      "version": "1.0.0",
+      "name": "Verified Complex-Intent Direct Fulfillment",
+      "layer": "interaction_control",
+      "strategy_family": "direct_fulfillment",
+      "task_description": "Fulfill a sufficiently specified complex request without paying for an unnecessary dialogue turn.",
+      "state_description": "The visible request has a coherent target and enough public scenario or attribute evidence for a catalog-grounded recommendation.",
+      "solution_description": "Execute the matched semantic plan, rank a diverse Top-10 internal slate, and state the leading public evidence concisely.",
+      "applicability": {
+        "disclosure_statuses": ["sufficient"],
+        "dialogue_phases": ["initial", "recommendation"],
+        "readiness": ["recommend_now"],
+        "intent_shapes": ["direct_attribute", "occasion_to_attribute", "fit_or_audience", "multi_occasion"],
+        "public_cues": ["I need", "I want", "looking for", "suggestions"]
+      },
+      "thought_template": [
+        {"step_id": "verify-public-frame", "operation": "inspect_state", "objective": "Confirm the current retrieval frame has a coherent target.", "guard": "DSUS marks the request recommendation-ready.", "on_success": "retrieve", "on_failure": "rematch"},
+        {"step_id": "retrieve", "operation": "retrieve_catalog", "objective": "Produce a full-catalog Top-10 using the semantic Skill frame.", "guard": "Only public catalog fields are used.", "on_success": "recommend", "on_failure": "rematch"},
+        {"step_id": "recommend", "operation": "recommend", "objective": "Recommend promptly with leading evidence.", "guard": "The retrieved slate is non-empty.", "on_success": "observe-feedback", "on_failure": "safe-stop"}
+      ],
+      "insights": [
+        {"trigger": "The request is already actionable.", "principle": "A clarification has a real user cost; do not ask merely to make the state more detailed.", "intended_effect": "Preserve efficiency on direct complex intents."}
+      ],
+      "query_policy": "preserve",
+      "action_types": ["recommend"],
+      "provenance": "State-conditioned extension of legacy TAIRA verified-intent fulfillment."
+    },
+    {
+      "schema_version": "mt_state_conditioned_thought_skill_v1",
+      "pattern_id": "interaction-progressive-decisive-elicitation",
+      "version": "1.0.0",
+      "name": "Progressive Decisive-Constraint Elicitation",
+      "layer": "interaction_control",
+      "strategy_family": "progressive_elicitation",
+      "task_description": "Recover one missing decision-critical preference with the minimum possible interaction cost.",
+      "state_description": "The target is recognizable but one visible axis remains too underspecified to choose a trustworthy catalog route.",
+      "solution_description": "Ask a single unrepeated question that distinguishes plausible retrieval frames; after the answer, immediately rematch to fulfillment.",
+      "applicability": {
+        "disclosure_statuses": ["missing_decisive"],
+        "dialogue_phases": ["initial", "elicitation"],
+        "readiness": ["ask_decisive"],
+        "intent_shapes": ["occasion_to_attribute", "direct_attribute"],
+        "public_cues": ["best", "guide me", "suitable", "perfect for"]
+      },
+      "thought_template": [
+        {"step_id": "locate-axis", "operation": "inspect_state", "objective": "Choose the unresolved public axis with the highest candidate discrimination.", "guard": "DSUS reports a missing decisive axis.", "on_success": "ask-once", "on_failure": "rematch"},
+        {"step_id": "ask-once", "operation": "ask", "objective": "Ask one focused question in natural language.", "guard": "The target has not already been asked.", "on_success": "observe-answer", "on_failure": "rematch"},
+        {"step_id": "observe-answer", "operation": "update_state", "objective": "Use the public answer to rematch a fulfillment Skill.", "guard": "A user answer arrives.", "on_success": "rematch", "on_failure": "safe-stop"}
+      ],
+      "insights": [
+        {"trigger": "The request is broad but not incoherent.", "principle": "Ask about the property that changes product suitability, not every missing catalog field.", "intended_effect": "Create a useful clarification rather than an interview."}
+      ],
+      "query_policy": "preserve",
+      "action_types": ["ask"],
+      "provenance": "State-conditioned extension of legacy TAIRA progressive elicitation experience."
+    },
+    {
+      "schema_version": "mt_state_conditioned_thought_skill_v1",
+      "pattern_id": "interaction-ambiguous-interpretation-resolution",
+      "version": "1.0.0",
+      "name": "Ambiguous Interpretation Resolution",
+      "layer": "interaction_control",
+      "strategy_family": "ambiguity_resolution",
+      "task_description": "Resolve one visible audience, category, or scenario ambiguity before committing to a product group.",
+      "state_description": "Two public interpretations would lead to materially different catalog evidence.",
+      "solution_description": "Ask a discriminating interpretation question, preserve both readings in memory, then recommend once the user selects or narrows one.",
+      "applicability": {
+        "disclosure_statuses": ["ambiguous"],
+        "dialogue_phases": ["initial", "elicitation"],
+        "readiness": ["ask_decisive"],
+        "intent_shapes": ["taxonomy_ambiguity", "fit_or_audience", "multi_occasion"],
+        "public_cues": ["either", "both", "women and children", "men and women", "casual and dress"]
+      },
+      "thought_template": [
+        {"step_id": "identify-readings", "operation": "inspect_state", "objective": "Name the two visible interpretations that change retrieval.", "guard": "DSUS reports ambiguity.", "on_success": "ask-discriminator", "on_failure": "rematch"},
+        {"step_id": "ask-discriminator", "operation": "ask", "objective": "Ask one concrete interpretation question.", "guard": "The question has not been asked before.", "on_success": "observe-answer", "on_failure": "safe-stop"},
+        {"step_id": "observe-answer", "operation": "update_state", "objective": "Use the answer to route to semantic grounding and fulfillment.", "guard": "A public answer arrives.", "on_success": "rematch", "on_failure": "safe-stop"}
+      ],
+      "insights": [
+        {"trigger": "There are two plausible product populations.", "principle": "An explicit interpretation question is more valuable than a broad generic preference request.", "intended_effect": "Avoid choosing the wrong product taxonomy with false confidence."}
+      ],
+      "query_policy": "taxonomy_clarify",
+      "action_types": ["ask"],
+      "provenance": "State-conditioned extension of legacy TAIRA ambiguous scenario exploration."
+    },
+    {
+      "schema_version": "mt_state_conditioned_thought_skill_v1",
+      "pattern_id": "interaction-conflict-priority-negotiation",
+      "version": "1.0.0",
+      "name": "Visible Priority Conflict Negotiation",
+      "layer": "interaction_control",
+      "strategy_family": "priority_negotiation",
+      "task_description": "Resolve a visible trade-off between requirements whose relative priority determines the recommendation.",
+      "state_description": "The user asks for potentially competing outcomes such as formal style plus travel comfort, or multiple incompatible audience/usage constraints.",
+      "solution_description": "Expose the single trade-off in user language, ask which outcome should dominate, and turn the answer into an explicit retrieval priority rather than silently dropping a requirement.",
+      "applicability": {
+        "disclosure_statuses": ["conflict"],
+        "dialogue_phases": ["initial", "elicitation"],
+        "readiness": ["ask_decisive"],
+        "intent_shapes": ["multi_occasion", "occasion_to_attribute", "fit_or_audience"],
+        "public_cues": ["while also", "formal", "comfort during travel", "post-mastectomy", "but also"]
+      },
+      "thought_template": [
+        {"step_id": "surface-tradeoff", "operation": "inspect_state", "objective": "Identify the two visible requirements that cannot both dominate ranking.", "guard": "DSUS reports conflict.", "on_success": "ask-priority", "on_failure": "rematch"},
+        {"step_id": "ask-priority", "operation": "ask", "objective": "Ask which requirement should take precedence.", "guard": "A priority has not already been supplied.", "on_success": "observe-answer", "on_failure": "safe-stop"},
+        {"step_id": "observe-answer", "operation": "update_state", "objective": "Promote the chosen priority in the retrieval frame.", "guard": "A public priority answer arrives.", "on_success": "rematch", "on_failure": "safe-stop"}
+      ],
+      "insights": [
+        {"trigger": "The user states two attractive but competing goals.", "principle": "Do not silently optimize one dimension and call it a match.", "intended_effect": "Make conflict handling visible, explainable, and recoverable."}
+      ],
+      "query_policy": "multi_occasion",
+      "action_types": ["ask"],
+      "provenance": "Seeded from legacy TAIRA multi-requirement planning and new conflict transition design."
+    },
+    {
+      "schema_version": "mt_state_conditioned_thought_skill_v1",
+      "pattern_id": "interaction-probe-comparative-recommendation",
+      "version": "1.0.0",
+      "name": "Plausible-Option Probe and Comparative Feedback",
+      "layer": "interaction_control",
+      "strategy_family": "feedback_exposure",
+      "task_description": "Offer an initially plausible catalog-grounded option when user feedback is likely to reveal the deciding priority more efficiently than a generic question.",
+      "state_description": "The visible request is broadly actionable but contains more than one reasonable ranking emphasis; a concrete option can elicit a correction.",
+      "solution_description": "Recommend a defensible leading option, retain the public slate, and treat any correction as a repair signal rather than a failed conversation.",
+      "applicability": {
+        "disclosure_statuses": ["sufficient"],
+        "dialogue_phases": ["initial"],
+        "readiness": ["probe_recommend"],
+        "intent_shapes": ["occasion_to_attribute", "multi_occasion", "fit_or_audience"],
+        "public_cues": ["suitable", "outdoor", "casual", "stylish", "comfortable"]
+      },
+      "thought_template": [
+        {"step_id": "build-plausible-slate", "operation": "retrieve_catalog", "objective": "Retrieve options satisfying the visible shared core.", "guard": "The request is actionable but priority uncertainty remains.", "on_success": "recommend-probe", "on_failure": "rematch"},
+        {"step_id": "recommend-probe", "operation": "recommend", "objective": "Present a leading defensible option without pretending the priority is settled.", "guard": "At least one public item is grounded.", "on_success": "observe-feedback", "on_failure": "safe-stop"},
+        {"step_id": "observe-feedback", "operation": "update_state", "objective": "Route feedback into the repair Skill.", "guard": "The user reacts to the slate.", "on_success": "rematch", "on_failure": "safe-stop"}
+      ],
+      "insights": [
+        {"trigger": "Several reasonable ranking emphases remain.", "principle": "A concrete, relevant option can reveal a stable priority faster than an abstract question.", "intended_effect": "Support revision-style interaction without using hidden labels."}
+      ],
+      "query_policy": "preserve",
+      "action_types": ["recommend"],
+      "provenance": "New multi-turn Skill derived from feedback-as-preference-evidence design."
+    },
+    {
+      "schema_version": "mt_state_conditioned_thought_skill_v1",
+      "pattern_id": "interaction-feedback-priority-repair",
+      "version": "1.0.0",
+      "name": "Feedback-Triggered Priority Repair",
+      "layer": "interaction_control",
+      "strategy_family": "revision_repair",
+      "task_description": "Repair a recommendation when visible feedback promotes a new decision-critical priority.",
+      "state_description": "A prior recommendation is close or rejected, and the user has stated a concrete correction that can re-rank catalog candidates.",
+      "solution_description": "Use the feedback rewrite Skill, exclude the previous slate, and recommend a new grounded Top-10 without re-asking resolved preferences.",
+      "applicability": {
+        "disclosure_statuses": ["revised"],
+        "dialogue_phases": ["repair"],
+        "readiness": ["repair_recommend"],
+        "intent_shapes": ["feedback_repair"],
+        "public_cues": ["first option", "but I need", "prioritize", "instead"]
+      },
+      "thought_template": [
+        {"step_id": "confirm-correction", "operation": "inspect_state", "objective": "Verify that a new public priority is available for repair.", "guard": "DSUS marks a revision or explicit rejection.", "on_success": "retrieve-repair", "on_failure": "reorient"},
+        {"step_id": "retrieve-repair", "operation": "retrieve_catalog", "objective": "Re-rank using the revised frame and exclude shown IDs.", "guard": "The revised frame has a visible target.", "on_success": "recommend-repair", "on_failure": "reorient"},
+        {"step_id": "recommend-repair", "operation": "recommend", "objective": "Give a repaired recommendation with concise evidence.", "guard": "A new candidate slate exists.", "on_success": "observe-feedback", "on_failure": "safe-stop"},
+        {"step_id": "reorient", "operation": "defer-to-interaction-skill", "objective": "Ask a targeted question only if feedback is non-actionable.", "guard": "No repair frame can be built.", "on_success": "rematch", "on_failure": "safe-stop"}
+      ],
+      "insights": [
+        {"trigger": "Feedback contains a concrete priority shift.", "principle": "Repair immediately; do not restart general elicitation.", "intended_effect": "Reward the user for correcting the system and reduce abandonment risk."}
+      ],
+      "query_policy": "feedback_repair",
+      "action_types": ["recommend"],
+      "provenance": "State-conditioned extension of legacy TAIRA failed-trajectory correction."
+    },
+    {
+      "schema_version": "mt_state_conditioned_thought_skill_v1",
+      "pattern_id": "interaction-low-patience-shortest-path",
+      "version": "1.0.0",
+      "name": "Low-Patience Shortest Safe Path",
+      "layer": "interaction_control",
+      "strategy_family": "interaction_efficiency",
+      "task_description": "Avoid unnecessary interaction when public evidence already supports a safe recommendation or repair.",
+      "state_description": "The dialogue contains a usable frame and prior interaction has already consumed user attention.",
+      "solution_description": "Prefer one grounded recommendation over another generic question; reserve clarification for a clearly decision-changing unresolved axis.",
+      "applicability": {
+        "disclosure_statuses": ["sufficient", "revised"],
+        "dialogue_phases": ["recommendation", "repair"],
+        "readiness": ["recommend_now", "repair_recommend"],
+        "intent_shapes": ["direct_attribute", "occasion_to_attribute", "feedback_repair"],
+        "public_cues": ["already", "first option", "need to prioritize"]
+      },
+      "thought_template": [
+        {"step_id": "assess-interaction-cost", "operation": "inspect_state", "objective": "Check whether another question would change the public retrieval frame.", "guard": "At least one interaction has occurred.", "on_success": "recommend-shortest-path", "on_failure": "rematch"},
+        {"step_id": "recommend-shortest-path", "operation": "recommend", "objective": "Complete with a grounded slate when evidence is adequate.", "guard": "The existing public frame is actionable.", "on_success": "observe-feedback", "on_failure": "rematch"}
+      ],
+      "insights": [
+        {"trigger": "The user has already clarified or corrected the system.", "principle": "Do not spend a second turn reconfirming the same decision boundary.", "intended_effect": "Separate useful interaction from avoidable conversational cost."}
+      ],
+      "query_policy": "preserve",
+      "action_types": ["recommend"],
+      "provenance": "New efficiency Skill aligned with the frozen benchmark's path-sensitive evaluation."
+    },
+    {
+      "schema_version": "mt_state_conditioned_thought_skill_v1",
+      "pattern_id": "interaction-dialogue-contract-reorientation",
+      "version": "1.0.0",
+      "name": "Dialogue Contract Reorientation",
+      "layer": "interaction_control",
+      "strategy_family": "safe_recovery",
+      "task_description": "Recover from an unhelpful visible branch without repeating the same question or recommendation.",
+      "state_description": "The user response makes clear that the previous interaction did not resolve the decision boundary, but no hidden information is assumed.",
+      "solution_description": "Switch to the smallest remaining public decision axis or safely stop; never manufacture a new preference or reuse a rejected slate.",
+      "applicability": {
+        "disclosure_statuses": ["missing_decisive", "ambiguous", "conflict", "revised"],
+        "dialogue_phases": ["elicitation", "feedback", "repair"],
+        "readiness": ["ask_decisive", "repair_recommend", "safe_stop"],
+        "intent_shapes": ["taxonomy_ambiguity", "feedback_repair", "multi_occasion"],
+        "public_cues": ["already clarified", "does not meet", "none of those"]
+      },
+      "thought_template": [
+        {"step_id": "inspect-unresolved", "operation": "inspect_state", "objective": "Find a remaining public axis not already asked or shown.", "guard": "A prior interaction did not resolve the visible need.", "on_success": "rematch", "on_failure": "safe-stop"},
+        {"step_id": "safe-stop", "operation": "stop", "objective": "End gracefully when no grounded recovery action remains.", "guard": "No new public evidence can justify another question or recommendation.", "on_success": "terminal", "on_failure": "terminal"}
+      ],
+      "insights": [
+        {"trigger": "A branch has visibly failed.", "principle": "Recovery must be based on new public evidence, not a hidden simulation assumption.", "intended_effect": "Keep re-planning auditable and prevent repetition loops."}
+      ],
+      "query_policy": "preserve",
+      "action_types": ["ask", "stop"],
+      "provenance": "Seeded from legacy TAIRA corrected failures and public dialogue safety contracts."
+    }
+  ]
+}

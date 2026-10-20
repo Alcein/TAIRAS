@@ -1,0 +1,20 @@
+{
+  "backend": {
+    "adapter_path": "../models/dous-open-sft",
+    "backend_id": "qwen35_4b_scale900_open_sft_formal_v1",
+    "base_model_name_or_path": "Qwen/Qwen3.5-4B",
+    "base_model_revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+    "generation": {
+      "do_sample": false,
+      "enable_thinking": false,
+      "max_new_tokens": 1536,
+      "num_beams": 1,
+      "temperature": 0.0
+    },
+    "kind": "local_lora"
+  },
+  "compiler_id": "dsus_v2_qwen35_4b_scale900_open_sft_formal_v1",
+  "fallback_to_rule": true,
+  "max_attempts": 2,
+  "schema_version": "dsus_state_compiler_runtime_profile_v1"
+}

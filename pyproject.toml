@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# Historical distribution and command names remain stable for reproducibility;
+# TAIRAS is the public research name.
+name = "taira-mt"
+version = "0.1.0"
+description = "TAIRAS: decision-oriented user states for thought-augmented interactive recommendation"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+  "pydantic>=2.10,<3",
+  "PyYAML>=6,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<9",
+  "pytest-cov>=6,<7",
+  "ruff>=0.9,<1",
+]
+ml = [
+  "joblib>=1.4,<2",
+  "numpy>=1.26,<3",
+  "scikit-learn>=1.5,<2",
+]
+encoder = [
+  "numpy>=1.26,<3",
+  "scikit-learn>=1.5,<2",
+  "sentencepiece>=0.2,<1",
+  "torch>=2.6,<3",
+  "transformers>=4.50,<5",
+]
+llm = [
+  "openai>=1.60,<2",
+]
+state-compiler-train = [
+  "torch>=2.7,<3",
+  "transformers==5.14.1",
+  "peft==0.19.1",
+  "accelerate==1.14.0",
+  "bitsandbytes>=0.49,<0.50",
+  "deepspeed>=0.17,<1",
+]
+
+[project.scripts]
+tairas-run-mt-baseline = "taira_mt.cli.run_mt_baseline:main"
+tairas-build-mt-catalog-index = "taira_mt.cli.build_mt_catalog_index:main"
+tairas-build-frozen-multiturn-test = "taira_mt.cli.build_frozen_multiturn_test:main"
+tairas-materialize-frozen-multiturn-runtime = "taira_mt.cli.materialize_frozen_multiturn_runtime:main"
+tairas-build-multiturn-development-set = "taira_mt.cli.build_multiturn_development_set:main"
+tairas-train-mt-civ = "taira_mt.cli.train_mt_civ:main"
+tairas-train-dsus-state-compiler-sft = "taira_mt.cli.train_dsus_state_compiler_sft:main"
+tairas-generate-dsus-state-compiler = "taira_mt.cli.generate_dsus_state_compiler:main"
+tairas-evaluate-dsus-state-compiler = "taira_mt.cli.evaluate_dsus_state_compiler:main"
+tairas-build-dsus-evidence-first-sft = "taira_mt.cli.build_dsus_evidence_first_sft:main"
+tairas-build-dsus-scale-postlabel-pipeline = "taira_mt.cli.build_dsus_scale_postlabel_pipeline:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"taira_mt.mt_agent" = ["*.json"]
